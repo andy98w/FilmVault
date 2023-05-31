@@ -1,11 +1,11 @@
 
 /* General */
 .container {
-    padding-left: 0px;
-    padding-right: 0px;
-    margin-right: 0px;
-    margin-left: 0px;
-    width: 100%;
+    padding-left: 15vw;
+    padding-right: 15vw;
+    margin-right: auto;
+    margin-left: auto;
+    width: 70vw;
 }
 ::-webkit-scrollbar {
     height: 6px;
@@ -31,8 +31,8 @@
     border-radius: 10px;
 }
 .pfp {
-    width:40px;
-    height:40px; 
+    width:35px;
+    height:35px; 
     border-radius: 50%; 
     margin-top: 10px;
     margin-bottom: 10px;
@@ -43,19 +43,25 @@ h1 {
     text-align: center;
     color: white;
     margin-bottom: 40px;
+    color: white;
+    font-family: 'Lato';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 36px;
 }
 h3 {
-    font-size: 16px !important;
+    font-size: 11px !important;
     color: white !important;
     text-align: center;
 }
 h6 {
-    font-size: 16px !important;
+    font-size: 12px !important;
     color: white !important;
     text-align: left;
 }
 h7 {
-    font-size: 16px !important;
+    font-size: 12px !important;
     color: white !important;
     text-align: right;
 }
@@ -94,7 +100,7 @@ h7 {
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
-    font-size: 24px;
+    font-size: 19px;
     margin: auto;
     z-index: 10;
 }
@@ -108,7 +114,7 @@ a:hover, a:visited, a:link, a:active {
     justify-content: left;
     flex: 1 1 20px;
     text-align: left;
-    font-size: 30px;
+    font-size: 24px;
     margin-left: 30px;
     font-weight: bold;
     margin-top: 20px;
@@ -133,7 +139,7 @@ a:hover, a:visited, a:link, a:active {
 .dropbtn {
     background-color: #3F3F3F;
     color: white;
-    font-size: 16px;
+    font-size: 12px;
     border: none;
     text-align: left;
     margin-top:10px;
@@ -149,7 +155,7 @@ a:hover, a:visited, a:link, a:active {
     background-color: #3F3F3F;
     min-width: 160px;
     z-index: 1;
-    font-size: 16px;
+    font-size: 12px;
   }
   .dropdown-content a {
     color: white;
@@ -161,7 +167,7 @@ a:hover, a:visited, a:link, a:active {
 .login{
     margin-top: 10px;
     margin-right: 20px;
-    font-size: 20px;
+    font-size: 16px;
     color: white !important;
 }
 /* LOGIN */
@@ -175,7 +181,7 @@ a:hover, a:visited, a:link, a:active {
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
-    font-size: 24px;
+    font-size: 20px;
 }
 *{
 box-sizing: padding-box;
@@ -196,7 +202,7 @@ box-sizing: padding-box;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     position: absolute;
-    font-size: 30px;
+    font-size: 24px;
     margin-top: 30px;
     margin-left: 30px;
 }
@@ -218,15 +224,6 @@ textarea:focus, input:focus {
 }
 input, select, textarea{
     color: #89C9B8;
-}
-h2 {
-    text-align: center;
-    margin-bottom: 40px;
-    color: white;
-    font-style: normal;
-    font-weight: 700;
-    font-size: 30px;
-    line-height: 36px;
 }
 input {
     display: block;
@@ -254,7 +251,7 @@ label {
     margin-right: 0;
     font-style: normal;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 17px;
     color: #89C9B8;
     margin-top: -10px;
@@ -265,7 +262,7 @@ label {
     margin-right: 0;
     font-style: normal;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 17px;
     color: #89C9B8;
     margin-top: -10px;
@@ -297,7 +294,7 @@ p {
     margin-top: 30px;
     text-align: center;
     color: white;
-    font-size: 16px;
+    font-size: 12px;
 }
 p a {
     text-decoration: none;
@@ -314,7 +311,7 @@ p a {
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
-    font-size: 24px;
+    font-size: 19px;
 }
 *{
     box-sizing: padding-box;
@@ -335,7 +332,7 @@ p a {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     position: absolute;
-    font-size: 30px;
+    font-size: 24px;
     margin-top: 30px;
     margin-left: 30px;
 }
@@ -344,22 +341,13 @@ p a {
     align-items: right;
     margin: auto;
     width: 50%;
-    margin-top: 30vh;
+    margin-top: 24vh;
 }
 .form{
     background-color: transparent;
 }
 .form-control {
     background-color: transparent;
-}
-h2 {
-    text-align: center;
-    margin-bottom: 15px;
-    color: white;
-    font-style: normal;
-    font-weight: 700;
-    font-size: 30px;
-    line-height: 36px;
 }
 input {
     display: block;
@@ -376,7 +364,7 @@ input {
 label {
     font-style: normal;
     font-weight: 500;
-    font-size: 16px;
+    font-size: 12px;
     line-height: 19px;
     color: #FFFFFF;
 }
@@ -386,10 +374,28 @@ label {
     margin-right: 0;
     font-style: normal;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 11px;
     line-height: 17px;
     color: #89C9B8;
     margin-top: -10px;
+}
+.backbtn {
+    display: block;
+    background: #89C9B8;
+    color: black;
+    border-radius: 5px;
+    border: none;
+    width: 100px;
+    margin-top: 30px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 10px;
+}
+.backbtn p {
+    margin-left: 10px;
+    margin-right: 10px;
+    color: black;
+    padding: 3px;
 }
 button {
     display: block;
@@ -418,7 +424,7 @@ p {
     margin-top: 10px;
     text-align: center;
     color: white;
-    font-size: 16px;
+    font-size: 12px;
 }
 p a {
     text-decoration: none;
@@ -435,7 +441,7 @@ p a {
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
-    font-size: 24px;
+    font-size: 19px;
 }
 *{
     box-sizing: padding-box;
@@ -456,7 +462,7 @@ p a {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     position: absolute;
-    font-size: 30px;
+    font-size: 24px;
     margin-top: 30px;
     margin-left: 30px;
 }
@@ -551,16 +557,16 @@ h2::after {
 .item {
     margin-bottom: 10px;
     margin-right: 20px;
-    width: 220px;
-    height: 400px;
+    width: 170px;
+    height: 310px;
     display: inline-block;
     border-radius: 10%;
     position: relative; 
     z-index: 1;
 }
 .item img{
-    width: 220px;
-    height: 330px;
+    width: 170px;
+    height: 255px;
     border-radius: 10%;
     display: block;
     transition: transform 0.5s;
@@ -572,32 +578,42 @@ h2::after {
     background: linear-gradient(rgba(0,0,0,0.6), #003a3a);
     position: absolute;
     left:0;
-    bottom:68px;
+    bottom:53px;
     overflow: hidden;
     display: flex;
     align-items: center;
     flex-direction: column;
     text-align: center;
-    font-size: 14px;
+    font-size: 10px;
     transition: height 0.5s;
 }
 .layer p {
-    font-size: 12px;
+    font-size: 10px;
     margin: 15px 10px 0px 10px;
 }
 .layer .form1 {
     position: absolute;
-    bottom: 5px;
+    bottom: 0;
+    margin-left:auto;
+    margin-right:auto;
     margin-top: -10px; 
+    height: 60px;
 }
 .layerformbutton {
     background: transparent;
     border: 1px solid #89C9B8;
-    border-radius: 18px;
+    border-radius: 10px;
     color: white;
-    height: 30px;
+    height: 20px;
     padding: 1px;
-    margin-top: 5px;
+    width: 130px;
+    position: absolute;
+    bottom: 10px;
+    margin-left:-60px;
+}
+.layerformbutton p {
+    font-size: 10px;
+    margin: auto 10px 0px 10px;
 }
 .layerformbutton:hover {
     background: linear-gradient(white, #89C9B8);
@@ -629,8 +645,7 @@ body {
 .formcontainer4 {
     display: block;
     margin: auto;
-    width: 70%;
-    margin-left: 15vw;
+    width: 100%;
     margin-top: 150px;
     margin-bottom: 55px;
 }
@@ -639,8 +654,6 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(70vw, 1fr));
     grid-gap:25px;
-    width: 70vw;
-    margin-left: 17vw;
 }
 .searchresults .search .form{
     background-color: transparent;
@@ -687,17 +700,15 @@ body {
     font-weight: 500;
 }
 .header1{
-    margin-top: 150px;
+    margin-top: 120px;
     color: white;
     display: inline-block;
     text-align: center;
-    font-size: 42px;
-    margin-right: auto;
-    margin-left: 15vw;
+    font-size: 32px;
 }
 h5 {
     float: left;
-    font-size: 42px;
+    font-size: 32px;
     margin-right: 22px;
     margin-top: 20px;
     margin-left: 10px;
@@ -705,19 +716,18 @@ h5 {
 h4 {
     color: #89C9B8;
     float: left;
-    font-size: 42px;
+    font-size: 32px;
     margin-top: 22px;
 }
 .pfplarge {
-    width: 81px;
-    height: 81px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     float: left;
     margin-right: 20px;
 }
 .dropcontainer {
     display: inline-block;
-    margin-left: 14.5vw;
 }
 .dropdownpfp {
     display: block;
@@ -733,7 +743,7 @@ h4 {
 .dropbtnpfp {
     background-color: #212121;
     color: white;
-    font-size: 16px;
+    font-size: 12px;
     border: 1px solid #D9D9D9;
     border-radius: 24px;
     text-align: left;
@@ -755,11 +765,11 @@ h4 {
     opacity: 0.7;
     min-width: 179px;
     z-index: 2;
-    font-size: 16px;
+    font-size: 12px;
     margin-left: 100.5px;
-    margin-top: -50px;
+    margin-top: -45px;
     border-radius: 14%;
-    height: 106px;
+    height: 99px;
   }
   .dropdown-contentpfp input {
     color: black;
@@ -767,12 +777,12 @@ h4 {
     margin-left: auto;
     position: relative;
     display: block;
-    margin-top: 30px;
+    margin-top: 25px;
     border: none;
     z-index: 10;
     bottom: -9px;
     height: 35px;
-    border-radius: 10px;
+    border-radius: 0px;
     opacity: 1;
   }
   .dropdown-contentpfp .input2 {
@@ -784,7 +794,7 @@ h4 {
     margin-top: auto;
     border: none;
     z-index: 10;
-    margin-top: -30px;
+    margin-top: -25px;
     height: 35px;
     border-radius: 10px;
     opacity: 1;
@@ -794,10 +804,9 @@ h4 {
   .dropdownpfp:hover .dropdown-contentpfp {display: block;}
 .profilemovies {
     margin-top: 50px;
-    margin-left: 15vw;
-    margin-right: 15vw;
+    width: 70vw;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     grid-gap:25px;
 }
 .layerformbutton2 {
@@ -807,6 +816,13 @@ h4 {
     color: white;
     margin-bottom: 22px;
     margin-top: -8px;
+    width: 100px;
+    margin-left: auto;
+    margin-right: auto;
+    height: 30px;
+}
+.layerformbutton2 p {
+    margin: -1px 0px auto -5px;
 }
 .layerformbutton2:hover {
     background: linear-gradient(white, #89C9B8);
@@ -815,6 +831,13 @@ h4 {
     position: absolute;
     bottom: 50px;
     margin-top: -10px; 
+    width: 100px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 1px;
+}
+.layerinput2{
+    max-height: 10px;
 }
 .warning {
     font-family: 'Lato';
@@ -832,6 +855,10 @@ h4 {
     margin-bottom: 30px;
     height: 30px;
 }
+.warning p {
+    padding: 5px;
+    margin: auto 0 auto 0;
+}
 /* Top users */
 .tablecontainer{
     margin-bottom: 25px;
@@ -839,6 +866,7 @@ h4 {
 .mytable{
     width: 103%;
     border: 1px solid;
+    border-color: white;
     padding: 10px;
     margin: 10px 10px 50px 10px;
     margin-left:-18px;
@@ -851,7 +879,7 @@ h4 {
 .tableheader1{
     text-align: left;
     margin: 10px 10px 10px 10px;
-    font-size: 24px;
+    font-size: 19px;
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
@@ -861,7 +889,7 @@ h4 {
 .tableheader2{
     text-align: right;
     margin: 10px 10px 10px 10px;
-    font-size: 24px;
+    font-size: 19px;
     font-family: 'Lato';
     font-style: normal;
     font-weight: 700;
@@ -905,6 +933,6 @@ h4 {
     border-right: 1px solid #333333;
     border-bottom: 1px solid #333333;
     border-left: 1px solid #CCCCCC;
-    font-size: 24px;
+    font-size: 19px;
     border-radius: 10% ;
 }

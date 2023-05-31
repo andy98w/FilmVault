@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <link rel="stylesheet" href="stylesheet.css">
     </link>
@@ -27,8 +26,12 @@
                 <?php } ?>
                 <label>Email</label>
                 <input type="text" name="email" placeholder="Email"><br>
+
                 <button type="submit">Send Email</button>
             </form>
+            <a class="backbtn" href="loginindex.php">
+                <p>Back to login</p>
+            </a>
         </div>
     </div>
 </div>

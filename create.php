@@ -1,15 +1,13 @@
 <?php
 
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
-
-require_once 'C:\Windows\System32\vendor\autoload.php';
-
+require 'vendor/autoload.php';
 include 'dbconnection.php';
 $email = $_POST["email"];
 $uname = $_POST["uname"];
 $pass = $_POST["password"];
+$conf = $_POST["confpassword"];
 $sql = "SELECT * FROM users WHERE Usernames='$uname' OR Emails='$email'";
 $result = $conn->query($sql);
 if (strlen($pass) < 5 || strlen($pass) > 32) {
@@ -18,6 +16,10 @@ if (strlen($pass) < 5 || strlen($pass) > 32) {
 }
 if (strlen($uname) < 5 || strlen($uname) > 32) {
   header("Location: createaccount.php?error=Username must be between 5-32 characters long!");
+  exit();
+}
+if ($conf != $pass) {
+  header("Location: createaccount.php?error=Confirm password and password aren't the same!");
   exit();
 }
 if (mysqli_num_rows($result) > 0) {

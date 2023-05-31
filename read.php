@@ -6,8 +6,7 @@
 </head>
 
 <body>
-  <?php
-  include "dbconnection.php";
+  <?php include "dbconnection.php";
   $sql = "SELECT id, Usernames FROM users";
   $result = $conn->query($sql);
   while ($row = $result->fetch_assoc()) {

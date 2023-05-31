@@ -6,7 +6,6 @@
     <script src="https://kit.fontawesome.com/49b3b5f7cc.js" crossorigin="anonymous"></script>
 </head>
 <?php
-
 function makecard3($poster_path, $original_title, $user_id, $column)
 { ?>
 
@@ -15,9 +14,7 @@ function makecard3($poster_path, $original_title, $user_id, $column)
         include "dbconnection.php";
         if (strlen($original_title) > 27)
             $original_title = substr($original_title, 0, 27) . "...";
-        echo "<img src=\"$poster_path\" >"; ?>
-        <?php
-        echo "<br>";
+        echo "<img src=\"$poster_path\" >";
         $sql = "SELECT rating FROM userratings WHERE user_id='$user_id' AND movie_id='$column'";
         $temp = $conn->query($sql);
         if (mysqli_num_rows($temp) === 0) {
@@ -36,10 +33,9 @@ function makecard3($poster_path, $original_title, $user_id, $column)
 
 <?php
 
-function makecard2($poster_path, $original_title, $column)
-{
-    include "dbconnection.php";
-    $user_id = $_SESSION['id']; ?>
+function makecard2($poster_path, $original_title, $column) {
+    $username = $_COOKIE['Username'];
+    include "dbconnection.php"; ?>
     <div class="item">
         <?php
         if (strlen($original_title) > 27)
@@ -48,45 +44,47 @@ function makecard2($poster_path, $original_title, $column)
         <div class="layer">
             <form class="form1" action="delete.php" method="POST">
                 <input type="hidden" name="id" value="<?php echo $column ?>" />
-                <button type="submit" class="layerformbutton">Remove from list</button>
+                <button type="submit" class="layerformbutton">
+                    <p>Remove from list</p>
+                </button>
             </form>
-            <?php
-            $sql = "SELECT rating from userratings WHERE user_id='$user_id' AND movie_id='$column'";
+            <?php $sql = "SELECT rating from userratings WHERE Username='$username' AND movie_id='$column'";
             $rated = $conn->query($sql);
             $rated = mysqli_fetch_assoc($rated);
             $rated = $rated['rating'];
             if ($rated === NULL) { ?>
                 <h3> You haven't rated this yet! </h3>
                 <form class="form2" action="rate.php" method="POST">
-                    <input type="number" name="rating" placeholder="Rating">
+                    <input class="layerinput2" type="number" name="rating" placeholder="Rating">
                     <input type="hidden" name="id" value="<?php echo $column ?>" />
-                    <button type="submit" class="layerformbutton2">Rate this movie</button>
+                    <button type="submit" class="layerformbutton2">
+                        <p>Rate this movie</p>
+                    </button>
                 </form>
             <?php } else { ?>
-                <h3> You rated this a
-                    <?php echo $rated ?> /100
-                </h3>
-                <form action="update.php" method="POST">
-                    <input type="number" name="rating" placeholder="Rating"><br>
+                <h3> You rated this a <?php echo $rated ?> /100 </h3>
+                <form class="form2" action="update.php" method="POST">
+                    <input class="layerinput2" type="number" name="rating" placeholder="Rating">
                     <input type="hidden" name="id" value="<?php echo $column ?>" />
-                    <button type="submit" class="layerformbutton2">Update your rating</button>
+                    <button type="submit" class="layerformbutton2">
+                        <p>Update rating</p>
+                    </button>
                 </form>
             <?php } ?>
         </div>
         <h3>
             <?php echo $original_title; ?>
+        </h3>
     </div>
-    </h3>
     <?php
 } ?>
-<?php function makecard($poster_path, $original_title, $overview, $original_destination)
-{ ?>
+<?php function makecard($poster_path, $original_title, $overview, $original_destination) { ?>
     <div class="item">
         <?php
         if (strlen($original_title) > 27)
             $original_title = substr($original_title, 0, 27) . "...";
         if (strlen($overview) > 570)
-            $overview = substr($overview, 0, 570) . "...";
+            $overview = substr($overview, 0, 570) . "..."; 
         $poster = "http://image.tmdb.org/t/p/w500/" . $poster_path; ?>
         <img src=<?php echo "$poster" ?>>
         <div class="layer">
@@ -95,13 +93,15 @@ function makecard2($poster_path, $original_title, $column)
                     echo $overview; ?>
                 </span>
                 <?php
-                if (isset($_SESSION['id']) && isset($_SESSION['Usernames'])) { ?>
+                if (isset($_COOKIE['Username'])) { ?>
                 <form class="form1" action="addmovie.php" method="POST">
                     <input type="hidden" name="from" value='<?php echo $original_destination ?>' />
                     <input type="hidden" name="title" value="<?php echo $original_title ?>" />
                     <input type="hidden" name="img" value="<?php echo $poster ?>" />
                     <input type="hidden" name="overview" value="<?php echo $overview ?>" />
-                    <button type="submit" class="layerformbutton">Add to List</button>
+                    <button type="submit" class="layerformbutton">
+                        <p>Add to List</p>
+                    </button>
                 </form>
             <?php } ?>
             </p>
@@ -110,10 +110,7 @@ function makecard2($poster_path, $original_title, $column)
             <?php echo $original_title; ?>
         </h3>
     </div>
-<?php } ?>
-
-</html>
-<?php
+<?php } 
 function details($temp1, $row)
 {
     include "dbconnection.php";

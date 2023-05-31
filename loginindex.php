@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <link rel="stylesheet" href="stylesheet.css">
     </link>
@@ -30,7 +29,7 @@
                 <input type="text" name="email" placeholder="Enter Email"><br>
                 <label>Password</label>
                 <input type="password" name="password" placeholder="Enter Password"><br>
-                <a class="verify" href="email-verification.php">Forgot to Verify?</a>
+                <a class="verify" href="resend_verification.php">Forgot to Verify?</a>
                 <a class="forgot" href="forgotpassword.php">Forgot Password?</a>
                 <button type="submit">Log In</button>
             </form>

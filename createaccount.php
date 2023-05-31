@@ -27,6 +27,8 @@
                 <input type="text" name="uname" placeholder="User Name"><br>
                 <label>Password</label>
                 <input type="password" name="password" placeholder="Password"><br>
+                <label>Confirm Password</label>
+                <input type="confpassword" name="password" placeholder="Confirm Password"><br>
                 <button type="submit">Create Account</button>
             </form>
         </div>

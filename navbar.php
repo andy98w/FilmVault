@@ -9,14 +9,13 @@
 
 <body>
   <div id="topnav">
-    <?php session_start(); ?>
     <?php include "dbconnection.php"; ?>
     <div class="left">
       <a class="main" href="index.php">MYFAVMOVIES</a>
     </div>
-    <?php if (isset($_SESSION['id']) && isset($_SESSION['Usernames'])) {
-      $user_id = $_SESSION['id'];
-      $sql = "SELECT profile_pic FROM users WHERE id='$user_id'";
+    <?php if (isset($_COOKIE['Username'])) {
+      $username = $_COOKIE['Username'];
+      $sql = "SELECT profile_pic, Usernames FROM users WHERE Usernames='$username'";
       $result = $conn->query($sql);
       $red = mysqli_fetch_assoc($result);
       $pfp = $red['profile_pic'] ?>
@@ -24,7 +23,7 @@
         <img class="pfp" src="<?php echo $pfp ?> ">
         <div class="dropdown">
           <button class="dropbtn">
-            <?php echo $_SESSION['Usernames'] ?>
+            <?php echo $_COOKIE['Username'] ?>
           </button>
           <div class="dropdown-content">
             <a href="profile.php"> Profile </a>

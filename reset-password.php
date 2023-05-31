@@ -21,13 +21,9 @@ if (
   $query = $conn->query($sql);
 
   $row = mysqli_num_rows($query);
-  if ($row == "") {
-    $error .= '<h2>Invalid Link</h2>
-<p>The link is invalid/expired. Either you did not copy the correct link
-from the email, or you have already used the key in which case it is 
-deactivated.</p>
-<p><a href="forgotpassword.php">
-Click here</a> to reset password.</p>';
+  if ($row === 0) {
+    header("Location: forgotpassword.php?error=The link is invalid/expired. Either you did not copy the correct link from the email, or you have already used the key in which case it is deactivated");
+    exit();
   } else {
     $row = mysqli_fetch_assoc($query);
     $expDate = $row['expDate'];
@@ -53,17 +49,15 @@ Click here</a> to reset password.</p>';
           </div>
           <?php
     } else {
-      $error .= "<h2>Link Expired</h2>
-<p>The link is expired. You are trying to use the expired link which 
-as valid only 24 hours (1 days after request).<br /><br /></p>";
+      header("Location: forgotpassword.php?error=The link is expired. You are trying to use the expired link which 
+      as valid only 24 hours (1 days after request)");
+      exit();
     }
   }
   if ($error != "") {
     echo "<div class='error'>" . $error . "</div><br />";
   }
 }
-
-
 if (
   isset($_POST["email"]) && isset($_POST["action"]) &&
   ($_POST["action"] == "update")
@@ -74,7 +68,10 @@ if (
   $email = $_POST["email"];
   $curDate = date("Y-m-d H:i:s");
   if ($pass1 != $pass2) {
-    $error .= "<p>Password do not match, both password should be same.<br /><br /></p>";
+    $error .= "<p>Passwords do not match, both password should be same.</p>";
+  }
+  if (strlen($pass1) < 5 || strlen($pass1) > 32) {
+    $error .= "<p>Passwords must be between 5 and 32 characters long.</p>";
   }
   if ($error != "") {
     echo "<div class='error'>" . $error . "</div><br />";

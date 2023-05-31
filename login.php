@@ -1,7 +1,4 @@
 <?php
-
-session_start();
-
 include "dbconnection.php";
 
 if (isset($_POST['email']) && isset($_POST['password'])) {
@@ -24,10 +21,9 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
                 exit();
             }
             if ($row['Emails'] === $email && $row['Passwords'] === $pass) {
-                echo "Logged in!";
-                $_SESSION['Usernames'] = $row['Usernames'];
-                $_SESSION['id'] = $row['id'];
-                header("Location: index.php");
+                setcookie("Username", $row['Usernames'], time() + (86400 * 30), "/");
+                setcookie("id", $row['id'], time() + (86400 * 30), "/");
+                header("Location: index.php?error=Logged in!");
                 exit();
             } else {
                 header("Location: loginindex.php?error=Incorect Email or password");

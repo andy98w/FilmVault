@@ -1,9 +1,9 @@
+<!DOCTYPE html>
 <?php include 'navbar.php'; ?>
 <html>
 
 <head>
     <link rel="stylesheet" href="stylesheet.css">
-    </link>
     <link href='https://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
     <script src="https://kit.fontawesome.com/49b3b5f7cc.js" crossorigin="anonymous"></script>
 </head>
@@ -11,25 +11,27 @@
 <body>
     <div id="searchresults">
         <?php if (isset($_GET['added'])) { ?>
-            <p class="added">
+            <p class="warning">
                 <?php echo $_GET['added']; ?>
             </p>
         <?php } ?>
-        <div class="formcontainer4">
-            <?php
-            if (isset($_POST["search"])) {
-                $temp = "Showing results for '" . $_POST["search"] . "' ";
-            } else if (isset($_GET['added'])) {
-                $temp = $_GET['added'];
-            } ?>
-            <h1>
-                <?php echo $temp; ?>
-            </h1>
-            <form action="searchresults.php" method="POST">
-                <input type="text" placeholder="&#xf002; Search another movie" class="form-control m-2" id="name"
-                    name="search">
-                <button type="submit" class="btn-search">Search</button>
-            </form>
+        <div class="container">
+            <div class="formcontainer4">
+                <?php
+                if (isset($_POST["search"])) {
+                    $temp = "Showing results for '" . $_POST["search"] . "' ";
+                } else if (isset($_GET['added'])) {
+                    $temp = $_GET['added'];
+                } ?>
+                <h1>
+                    <?php echo $temp; ?>
+                </h1>
+                <form action="searchresults.php" method="POST">
+                    <input type="text" placeholder="&#xf002; Search another movie" class="form-control m-2" id="name"
+                        name="search">
+                    <button type="submit" class="btn-search">Search</button>
+                </form>
+            </div>
         </div>
         <?php
         if (isset($_POST["search"])) {
@@ -42,7 +44,7 @@
                 $results = array_merge($results, $r);
             }
             $number_of_results = count($results);
-            $results_per_page = 21;
+            $results_per_page = 20;
             $number_of_pages = ceil($number_of_results / $results_per_page) - 1;
             if (!isset($_POST['page'])) {
                 $page = 1;
@@ -88,35 +90,5 @@
         </div>
     </div>
 </body>
-
-
-<?php
-include 'dbconnection.php';
-if (isset($_POST["title"]) && isset($_POST["img"])) {
-    $title = $_POST["title"];
-    $img = $_POST["img"];
-    $user_id = $_SESSION['id'];
-    $title = str_replace("'", "''", $title);
-    $sql = "SELECT * FROM movies WHERE title='$title'";
-    $result = $conn->query($sql);
-    if (mysqli_num_rows($result) === 0) {
-        $sql = "insert into movies (title, image) values ('$title', '$img')";
-        $conn->query($sql);
-
-    }
-    $sql = "SELECT * FROM movies WHERE title='$title'";
-    $result = $conn->query($sql);
-    $result = mysqli_fetch_assoc($result);
-    $movie_id = $result['id'];
-    $sql = "SELECT * FROM usermovies WHERE user_id='$user_id' AND movie_id='$movie_id'";
-    $result = $conn->query($sql);
-    if (mysqli_num_rows($result) === 0) {
-        $sql = "insert into usermovies (user_id, movie_id) values ('$user_id','$movie_id')";
-        $conn->query($sql);
-        $conn->close();
-    }
-}
-
-?>
 
 </html>

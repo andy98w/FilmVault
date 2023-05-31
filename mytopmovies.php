@@ -1,11 +1,11 @@
 <?php
 include "dbconnection.php";
-$user_id = $_SESSION['id'];
+$username = $_COOKIE['Username'];
 if (isset($_POST['DESC'])) {
-    $sql = "SELECT * FROM userratings WHERE user_id = '$user_id' ORDER BY rating ASC";
+    $sql = "SELECT * FROM userratings WHERE Username = '$username' ORDER BY rating ASC";
     $order = $conn->query($sql);
 } else {
-    $sql = "SELECT * FROM userratings  WHERE user_id = '$user_id' ORDER BY rating DESC";
+    $sql = "SELECT * FROM userratings  WHERE Username = '$username' ORDER BY rating DESC";
     $order = $conn->query($sql);
 }
 if (mysqli_num_rows($order) === 0) { ?>

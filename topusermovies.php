@@ -12,7 +12,7 @@
             $title = $red['title'];
             $poster = $red['image'];
             $overview = $red['overview'];
-            makecard($poster, $title, $overview, $column);
+            makecard($poster, $title, $overview, "index");
         } ?>
     </div>
 </body>

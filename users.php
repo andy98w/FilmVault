@@ -12,68 +12,41 @@
 
 <body>
     <?php include "dbconnection.php";
-    $sql = "SELECT id, Usernames, Number_of_ratings, profile_pic FROM users ORDER BY number_of_ratings DESC"; ?>
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="tablecontainer">
-                    <table class="mytable">
-                        <?php $result = $conn->query($sql); ?>
-                        <tr>
-                            <th class="tableheader1">
-                                <h7>Username</h7>
-                            </th>
-                            <th>
-                                <h3></h3>
-                            </th>
-                            <th class="tableheader2">
-                                <h7>Number of Ratings</h7>
-                            </th>
-                        </tr>
-                        <?php while ($row = $result->fetch_assoc()) { ?>
-                            <tr>
-                                <td class="pic"><a href="" id='<?php echo $row['id'] ?>' title=" "><img class="pfp"
-                                            src="<?php echo $row['profile_pic'] ?>" style="width:50px;height:50px" /></a>
-                                </td>
-                                <td><a href="" id='<?php echo $row['id'] ?>' title=" ">
-                                        <h6>
-                                            <?php echo $row['Usernames']; ?>
-                                        </h6>
-                                    </a>
-                                <td class="tableheader2">
-                                    <h7>
-                                        <?php echo $row['Number_of_ratings']; ?>
-                                    </h7>
-                            </tr>
-                        <?php } ?>
-                    </table>
-                    <div class="tablecontainer">
-                    </div>
-                </div>
+    $sql = "SELECT id, Usernames, Number_of_ratings, profile_pic, email_verified_at FROM users ORDER BY number_of_ratings DESC"; ?>
+    <div class="col-md-12">
+        <div class="tablecontainer">
+            <table class="mytable">
+                <?php $result = $conn->query($sql); ?>
+                <tr>
+                    <th class="tableheader1">
+                        <h7>Username</h7>
+                    </th>
+                    <th>
+                        <h3></h3>
+                    </th>
+                    <th class="tableheader2">
+                        <h7>Number of Ratings</h7>
+                    </th>
+                </tr>
+                <?php while ($row = $result->fetch_assoc()) { 
+                    if ($row['email_verified_at']!=NULL) { ?> 
+                    <tr>
+                        <td class="pic"><a href="" id='<?php echo $row['id'] ?>' title=" "><img class="pfp"
+                                    src="<?php echo $row['profile_pic'] ?>" style="width:50px;height:50px" /></a>
+                        </td>
+                        <td><a href="" id='<?php echo $row['id'] ?>' title=" ">
+                                <h6>
+                                    <?php echo $row['Usernames']; ?>
+                                </h6>
+                            </a>
+                        <td class="tableheader2">
+                            <h7>
+                                <?php echo $row['Number_of_ratings']; ?>
+                            </h7>
+                    </tr>
+                <?php }} ?>
+            </table>
+            <div class="tablecontainer">
             </div>
-            <script>
-
-                $(document).ready(function () {
-                    $('a').tooltip({
-                        classes: {
-                            "ui-tooltip": "custom"
-                        },
-                        position: { my: 'left center', at: 'right+50 center' },
-                        content: function (result) {
-                            $.post('fetch_data.php', {
-                                id: $(this).attr('id')
-                            }, function (data) {
-                                result(data);
-                            });
-                        }
-                    });
-                });
-            </script>
-            <style>
-                .custom {
-                    background: #212121
-                }
-            </style>
 </body>
-
 </html>

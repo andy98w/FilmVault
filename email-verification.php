@@ -8,8 +8,7 @@
     <link href='https://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
 </head>
 <?php
-if (isset($_POST["verify_email"]))
-{
+if (isset($_POST["verify_email"])) {
     $email = $_GET["email"];
     $verification_code = $_POST["verification_code"];
     include 'dbconnection.php';

@@ -14,9 +14,11 @@
             <div class="container">
                 <div class="search">
                     <?php if (isset($_GET['added'])) { ?>
-                        <p class="warning">
-                            <?php echo $_GET['added']; ?>
-                        </p>
+                        <div class="warning">
+                            <p>
+                                <?php echo $_GET['added']; ?>
+                            </p>
+                        </div>
 
                     <?php } ?>
                     <div class="formcontainer3">

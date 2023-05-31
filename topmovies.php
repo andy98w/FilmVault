@@ -1,7 +1,6 @@
 <html>
 <link rel="stylesheet" href="stylesheet.css">
 <?php
-
 $str = "https://api.themoviedb.org/3/movie/popular?api_key=8d577764c95d04282fe610ceecd260c2&language=en-US&page=1";
 $r = file_get_contents($str);
 $r = json_decode($r, true);

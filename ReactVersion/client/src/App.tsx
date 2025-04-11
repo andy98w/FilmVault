@@ -10,6 +10,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import MovieSearch from './pages/MovieSearch';
 import MyMovies from './pages/MyMovies';
+import MovieDetails from './pages/MovieDetails';
+import PersonDetails from './pages/PersonDetails';
 import './App.css';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -32,6 +34,8 @@ function AppContent() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/search" element={<MovieSearch />} />
+          <Route path="/movie/:id" element={<MovieDetails />} />
+          <Route path="/person/:id" element={<PersonDetails />} />
           <Route path="/user/:id" element={<UserProfile />} />
           
           {/* Protected routes */}

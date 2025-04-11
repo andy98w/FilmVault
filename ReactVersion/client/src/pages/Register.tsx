@@ -48,7 +48,7 @@ const Register = () => {
         className="auth-form-container" 
         style={{ position: 'relative', left: 0 }}
       >
-        <Link to="/" className="auth-logo">MyFavMovies</Link>
+        {/* Logo removed */}
         
         <div className="auth-form">
           <h1>Create Account</h1>

@@ -24,6 +24,14 @@ interface MovieCardProps {
   onRate?: (id: number, rating: number) => void;
 }
 
+// Helper function to determine rating color class based on TMDB style (reused in multiple places)
+export const getRatingColorClass = (rating: number): string => {
+  if (rating >= 8) return 'rating-high';    // Green for high ratings (8-10)
+  if (rating >= 6) return 'rating-medium';  // Yellow/orange for medium ratings (6-7.9)
+  if (rating >= 4) return 'rating-low';     // Orange for low ratings (4-5.9)
+  return 'rating-very-low';                 // Red for very low ratings (0-3.9)
+};
+
 const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) => {
   const { isAuthenticated } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
@@ -79,41 +87,68 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
   };
   
   return (
-    <div className="movie-card">
-      <img src={posterUrl} alt={movie.Title} />
-      <div className="movie-card-overlay">
-        <p>{movie.Overview?.substring(0, 150)}...</p>
-        {message && <p style={{ color: '#89C9B8' }}>{message}</p>}
-        {onList ? (
-          <>
-            {onRate && (
-              <div className="rating-stars">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <span 
-                    key={star}
-                    className={`star ${movie.Rating && star <= movie.Rating ? 'filled' : ''}`}
-                    onClick={() => handleRate(star)}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-            )}
-            <button onClick={removeFromList} className="card-action-btn">
-              Remove
-            </button>
-          </>
+    <div 
+      className="movie-card"
+      onClick={() => navigate(`/movie/${movie.MovieID}`)}
+    >
+      <div className="poster-wrapper">
+        {movie.PosterPath ? (
+          <img src={posterUrl} alt={movie.Title} className="movie-poster" />
         ) : (
-          <button 
-            onClick={addToList} 
-            className="card-action-btn"
-            disabled={isAdding}
+          <div className="no-poster">
+            <div>
+              <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🎬</span>
+              No image<br />available
+            </div>
+          </div>
+        )}
+        
+        {/* Rating circle */}
+        {movie.VoteAverage !== undefined && movie.VoteAverage > 0 && (
+          <div 
+            className={`rating-circle ${getRatingColorClass(movie.VoteAverage)}`}
+            title={`${movie.VoteAverage.toFixed(1)}/10`}
+            onClick={(e) => e.stopPropagation()}
           >
-            {isAdding ? 'Adding...' : 'Add to My Movies'}
-          </button>
+            {movie.VoteAverage.toFixed(1)}
+          </div>
         )}
       </div>
-      <div className="movie-card-title">{movie.Title}</div>
+      
+      {/* Movie title with tooltip and release date */}
+      <div className="card-info">
+        <div className="tooltip-container">
+          <h3 className="movie-title">{movie.Title}</h3>
+          <span className="tooltip-text">{movie.Title}</span>
+        </div>
+        {movie.ReleaseDate && (
+          <div className="release-date">
+            {new Date(movie.ReleaseDate).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
+        )}
+      </div>
+      
+      {/* Rating stars only for "my movies" list */}
+      {onList && onRate && (
+        <div className="rating-stars" onClick={(e) => e.stopPropagation()}>
+          {[1, 2, 3, 4, 5].map(star => (
+            <span 
+              key={star}
+              className={`star ${movie.Rating && star <= movie.Rating ? 'filled' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation(); 
+                handleRate(star);
+              }}
+            >
+              ★
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

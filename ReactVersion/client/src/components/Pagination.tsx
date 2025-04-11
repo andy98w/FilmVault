@@ -10,7 +10,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
   // Generate array of page numbers to display
   const getPaginationItems = () => {
     const items = [];
-    const maxPagesShown = 5; // Show at most 5 page numbers
+    const maxPagesShown = 3; // Show at most 3 page numbers
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesShown / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesShown - 1);
@@ -42,25 +42,51 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
 
   if (totalPages <= 1) return null;
 
+  // Theme colors from the app's CSS variables
+  const primaryColor = '#89C9B8';
+  const darkBg = '#212121';
+  const navBg = '#3F3F3F';
+  const textColor = '#FFFFFF';
+
+  const baseButtonStyle = {
+    padding: '8px 12px',
+    border: `1px solid ${primaryColor}`,
+    borderRadius: '10px',
+    background: darkBg,
+    color: textColor,
+    fontSize: '16px',
+    minWidth: '40px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  };
+
+  const disabledButtonStyle = {
+    ...baseButtonStyle,
+    opacity: 0.5,
+    cursor: 'not-allowed',
+    border: `1px solid ${navBg}`
+  };
+
+  const activeButtonStyle = {
+    ...baseButtonStyle,
+    background: primaryColor,
+    color: darkBg,
+    fontWeight: 'bold'
+  };
+
   return (
     <div className="pagination" style={{ 
       display: 'flex', 
       justifyContent: 'center', 
-      margin: '20px 0',
+      margin: '30px 0',
       gap: '8px'
     }}>
       <button 
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        style={{
-          padding: '5px 10px',
-          border: '1px solid #ddd',
-          borderRadius: '5px',
-          background: currentPage === 1 ? '#f5f5f5' : '#fff',
-          cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-        }}
+        style={currentPage === 1 ? disabledButtonStyle : baseButtonStyle}
       >
-        &laquo; Previous
+        &laquo;
       </button>
       
       {getPaginationItems().map((item, index) => (
@@ -68,20 +94,10 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
           key={index}
           onClick={() => typeof item === 'number' ? onPageChange(item) : null}
           disabled={item === '...'}
-          style={{
-            padding: '5px 10px',
-            border: typeof item === 'number' && item === currentPage 
-              ? '1px solid #007bff' 
-              : '1px solid #ddd',
-            borderRadius: '5px',
-            background: typeof item === 'number' && item === currentPage 
-              ? '#007bff' 
-              : '#fff',
-            color: typeof item === 'number' && item === currentPage 
-              ? '#fff' 
-              : '#000',
-            cursor: typeof item === 'number' ? 'pointer' : 'default'
-          }}
+          style={
+            item === '...' ? disabledButtonStyle :
+            typeof item === 'number' && item === currentPage ? activeButtonStyle : baseButtonStyle
+          }
         >
           {item}
         </button>
@@ -90,15 +106,9 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
       <button 
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        style={{
-          padding: '5px 10px',
-          border: '1px solid #ddd',
-          borderRadius: '5px',
-          background: currentPage === totalPages ? '#f5f5f5' : '#fff',
-          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-        }}
+        style={currentPage === totalPages ? disabledButtonStyle : baseButtonStyle}
       >
-        Next &raquo;
+        &raquo;
       </button>
     </div>
   );

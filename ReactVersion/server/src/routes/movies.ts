@@ -75,16 +75,58 @@ router.get('/top-rated', async (req, res) => {
   }
 });
 
+// Get popular people from TMDB
+router.get('/popular-people', async (req, res) => {
+  try {
+    const { page = 1 } = req.query;
+    
+    const response = await axios.get(`${TMDB_API_URL}/person/popular`, {
+      params: {
+        api_key: TMDB_API_KEY,
+        language: 'en-US',
+        page: page
+      }
+    });
+    
+    const people = response.data.results.map((person: any) => ({
+      id: person.id,
+      name: person.name,
+      profile_path: person.profile_path,
+      known_for_department: person.known_for_department,
+      popularity: person.popularity,
+      gender: person.gender === 1 ? 'Female' : 'Male',
+      known_for: person.known_for?.map((item: any) => ({
+        id: item.id,
+        title: item.title || item.name,
+        media_type: item.media_type
+      })) || []
+    }));
+    
+    // Return pagination info along with the people
+    res.json({
+      results: people,
+      page: response.data.page,
+      total_pages: response.data.total_pages,
+      total_results: response.data.total_results
+    });
+  } catch (error) {
+    console.error('Error fetching popular people from TMDB:', error);
+    res.status(500).json({ message: 'Error fetching popular people' });
+  }
+});
+
 // Search movies using TMDB
 router.get('/search', async (req, res) => {
   try {
-    const { query, page = 1 } = req.query;
+    const { query, page = 1, type = 'movie' } = req.query;
     
     if (!query) {
       return res.status(400).json({ message: 'Search query is required' });
     }
     
-    const response = await axios.get(`${TMDB_API_URL}/search/movie`, {
+    let endpoint = type === 'person' ? 'search/person' : 'search/movie';
+    
+    const response = await axios.get(`${TMDB_API_URL}/${endpoint}`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -94,18 +136,35 @@ router.get('/search', async (req, res) => {
       }
     });
     
-    const movies = response.data.results.map(mapTMDBMovie);
+    let results;
+    if (type === 'person') {
+      results = response.data.results.map((person: any) => ({
+        id: person.id,
+        name: person.name,
+        profile_path: person.profile_path,
+        known_for_department: person.known_for_department,
+        popularity: person.popularity,
+        gender: person.gender === 1 ? 'Female' : 'Male',
+        known_for: person.known_for?.map((item: any) => ({
+          id: item.id,
+          title: item.title || item.name,
+          media_type: item.media_type
+        })) || []
+      }));
+    } else {
+      results = response.data.results.map(mapTMDBMovie);
+    }
     
-    // Return pagination info along with the movies
+    // Return pagination info along with the results
     res.json({
-      results: movies,
+      results: results,
       page: response.data.page,
       total_pages: response.data.total_pages,
       total_results: response.data.total_results
     });
   } catch (error) {
-    console.error('Error searching movies from TMDB:', error);
-    res.status(500).json({ message: 'Error searching movies' });
+    console.error('Error searching from TMDB:', error);
+    res.status(500).json({ message: `Error searching ${req.query.type || 'movies'}` });
   }
 });
 
@@ -141,6 +200,55 @@ router.get('/details/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching movie details from TMDB:', error);
     res.status(500).json({ message: 'Error fetching movie details' });
+  }
+});
+
+// Get person (cast member) details from TMDB
+router.get('/person/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Fetch person details with combined credits
+    const response = await axios.get(`${TMDB_API_URL}/person/${id}`, {
+      params: {
+        api_key: TMDB_API_KEY,
+        language: 'en-US',
+        append_to_response: 'combined_credits'
+      }
+    });
+    
+    // Get most popular movies/shows they're known for
+    const knownFor = response.data.combined_credits?.cast
+      ?.sort((a: any, b: any) => b.popularity - a.popularity)
+      ?.slice(0, 8)
+      ?.map((credit: any) => ({
+        id: credit.id,
+        title: credit.title || credit.name,
+        poster_path: credit.poster_path,
+        media_type: credit.media_type,
+        character: credit.character,
+        release_date: credit.release_date || credit.first_air_date,
+        vote_average: credit.vote_average
+      })) || [];
+    
+    const person = {
+      id: response.data.id,
+      name: response.data.name,
+      profile_path: response.data.profile_path,
+      biography: response.data.biography,
+      birthday: response.data.birthday,
+      deathday: response.data.deathday,
+      place_of_birth: response.data.place_of_birth,
+      gender: response.data.gender === 1 ? 'Female' : 'Male',
+      known_for_department: response.data.known_for_department,
+      popularity: response.data.popularity,
+      knownFor: knownFor
+    };
+    
+    res.json(person);
+  } catch (error) {
+    console.error('Error fetching person details from TMDB:', error);
+    res.status(500).json({ message: 'Error fetching person details' });
   }
 });
 

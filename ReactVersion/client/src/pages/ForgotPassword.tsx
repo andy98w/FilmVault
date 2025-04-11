@@ -41,7 +41,7 @@ const ForgotPassword = () => {
         style={{ backgroundImage: 'url(/images/back1.jpg)' }}
       ></div>
       <div className="auth-form-container">
-        <Link to="/" className="auth-logo">MyFavMovies</Link>
+        {/* Logo removed */}
         
         <div className="auth-form">
           <h1>Reset Password</h1>

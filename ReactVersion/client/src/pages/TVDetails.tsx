@@ -19,7 +19,7 @@ interface Genre {
   name: string;
 }
 
-interface Movie {
+interface TVShow {
   MovieID: number;
   Title: string;
   PosterPath: string;
@@ -32,11 +32,12 @@ interface Movie {
   VoteCount: number;
   Cast: CastMember[];
   Similar: any[];
+  media_type: string;
 }
 
-const MovieDetails = () => {
+const TVDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const [show, setShow] = useState<TVShow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -46,13 +47,13 @@ const MovieDetails = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    const fetchMovieDetails = async () => {
+    const fetchTVDetails = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/movies/details/${id}`);
-        setMovie(response.data);
+        const response = await axios.get(`${API_URL}/api/movies/details/${id}?type=tv`);
+        setShow(response.data);
         
-        // If user is authenticated, check if movie is in their list
+        // If user is authenticated, check if show is in their list
         if (isAuthenticated) {
           try {
             const userMoviesResponse = await axios.get(`${API_URL}/api/movies/user/list`, {
@@ -61,46 +62,46 @@ const MovieDetails = () => {
               }
             });
             
-            // Check if this movie is in user's list
+            // Check if this show is in user's list
             const inList = userMoviesResponse.data.some(
               (userMovie: any) => userMovie.MovieID === Number(id)
             );
             setIsInList(inList);
           } catch (err) {
-            console.error('Error checking if movie is in user list:', err);
+            console.error('Error checking if show is in user list:', err);
           }
         }
       } catch (err) {
-        console.error('Error fetching movie details:', err);
-        setError('Failed to load movie details. Please try again.');
+        console.error('Error fetching TV show details:', err);
+        setError('Failed to load TV show details. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchMovieDetails();
+    fetchTVDetails();
   }, [id, isAuthenticated]);
   
   const addToList = async () => {
-    if (!isAuthenticated || !movie) return;
+    if (!isAuthenticated || !show) return;
     
     setIsAdding(true);
     try {
       await axios.post(`${API_URL}/api/movies/add`, {
-        movie_id: movie.MovieID,
-        movie_title: movie.Title,
-        poster_path: movie.PosterPath,
-        overview: movie.Overview
+        movie_id: show.MovieID,
+        movie_title: show.Title,
+        poster_path: show.PosterPath,
+        overview: show.Overview
       }, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
       
-      setMessage('Movie added to your list!');
+      setMessage('TV show added to your list!');
       setIsInList(true);
     } catch (error: any) {
-      setMessage(error.response?.data?.message || 'Error adding movie');
+      setMessage(error.response?.data?.message || 'Error adding TV show');
     } finally {
       setIsAdding(false);
       
@@ -112,19 +113,19 @@ const MovieDetails = () => {
   };
   
   const removeFromList = async () => {
-    if (!isAuthenticated || !movie) return;
+    if (!isAuthenticated || !show) return;
     
     try {
-      await axios.delete(`${API_URL}/api/movies/remove/${movie.MovieID}`, {
+      await axios.delete(`${API_URL}/api/movies/remove/${show.MovieID}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
       
-      setMessage('Movie removed from your list');
+      setMessage('TV show removed from your list');
       setIsInList(false);
     } catch (error: any) {
-      setMessage(error.response?.data?.message || 'Error removing movie');
+      setMessage(error.response?.data?.message || 'Error removing TV show');
     } finally {
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -150,30 +151,30 @@ const MovieDetails = () => {
     return (
       <div className="container">
         <div style={{ marginTop: '120px', textAlign: 'center' }}>
-          <h2>Loading movie details...</h2>
+          <h2>Loading TV show details...</h2>
         </div>
       </div>
     );
   }
   
-  if (error || !movie) {
+  if (error || !show) {
     return (
       <div className="container">
         <div style={{ marginTop: '120px', textAlign: 'center' }}>
           <h2>Error</h2>
-          <p>{error || 'Failed to load movie details'}</p>
+          <p>{error || 'Failed to load TV show details'}</p>
           <Link to="/">Return to Home</Link>
         </div>
       </div>
     );
   }
   
-  const backdropUrl = movie.BackdropPath 
-    ? `https://image.tmdb.org/t/p/original${movie.BackdropPath}` 
+  const backdropUrl = show.BackdropPath 
+    ? `https://image.tmdb.org/t/p/original${show.BackdropPath}` 
     : null;
     
-  const posterUrl = movie.PosterPath 
-    ? `https://image.tmdb.org/t/p/w500${movie.PosterPath}` 
+  const posterUrl = show.PosterPath 
+    ? `https://image.tmdb.org/t/p/w500${show.PosterPath}` 
     : '/default.jpg';
   
   return (
@@ -189,44 +190,47 @@ const MovieDetails = () => {
         <div className="movie-details-content">
           <div className="movie-details-header">
             <div className="movie-poster-container">
-              {movie.PosterPath ? (
+              {show.PosterPath ? (
                 <img 
                   src={posterUrl} 
-                  alt={movie.Title} 
+                  alt={show.Title} 
                   className="movie-details-poster" 
                 />
               ) : (
                 <div className="movie-details-no-poster">
-                  <span style={{ fontSize: '32px', marginBottom: '15px' }}>🎬</span>
+                  <span style={{ fontSize: '32px', marginBottom: '15px' }}>📺</span>
                   <p>No poster available</p>
                 </div>
               )}
             </div>
             
             <div className="movie-info">
-              <h1>{movie.Title} <span className="release-year">({formatReleaseDate(movie.ReleaseDate)})</span></h1>
+              <h1>
+                {show.Title} <span className="release-year">({formatReleaseDate(show.ReleaseDate)})</span>
+                <span className="media-type-badge" style={{ marginLeft: '10px', fontSize: '0.6em' }}>TV</span>
+              </h1>
               
               <div className="movie-meta">
-                {movie.Genres && (
+                {show.Genres && (
                   <div className="genres">
-                    {movie.Genres.map(genre => (
+                    {show.Genres.map(genre => (
                       <span key={genre.id} className="genre-tag">{genre.name}</span>
                     ))}
                   </div>
                 )}
                 
                 <div className="runtime">
-                  <span className="meta-item">⏱️ {formatRuntime(movie.Runtime)}</span>
+                  <span className="meta-item">⏱️ {formatRuntime(show.Runtime)}</span>
                 </div>
                 
                 <div className="rating" style={{ whiteSpace: 'nowrap' }}>
-                  <span className="meta-item">⭐ {movie.VoteAverage?.toFixed(1)}/10 <span className="vote-count">({movie.VoteCount} votes)</span></span>
+                  <span className="meta-item">⭐ {show.VoteAverage?.toFixed(1)}/10 <span className="vote-count">({show.VoteCount} votes)</span></span>
                 </div>
               </div>
               
               <div className="overview">
                 <h3>Overview</h3>
-                <p>{movie.Overview || 'No overview available.'}</p>
+                <p>{show.Overview || 'No overview available.'}</p>
               </div>
               
               <div className="movie-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', marginBottom: '10px' }}>
@@ -236,7 +240,7 @@ const MovieDetails = () => {
                       <button 
                         onClick={removeFromList} 
                         className="action-button remove-button"
-                        title="Remove from My Movies"
+                        title="Remove from My List"
                       >
                         Remove
                       </button>
@@ -245,7 +249,7 @@ const MovieDetails = () => {
                         onClick={addToList} 
                         className="action-button add-button"
                         disabled={isAdding}
-                        title="Add to My Movies"
+                        title="Add to My List"
                       >
                         {isAdding ? 'Adding...' : 'Add'}
                       </button>
@@ -259,7 +263,7 @@ const MovieDetails = () => {
                   <button 
                     onClick={() => navigate('/login')}
                     className="action-button add-button"
-                    title="Login to Add to My Movies"
+                    title="Login to Add to My List"
                   >
                     Login to Add
                   </button>
@@ -268,11 +272,11 @@ const MovieDetails = () => {
             </div>
           </div>
           
-          {movie.Cast && movie.Cast.length > 0 && (
+          {show.Cast && show.Cast.length > 0 && (
             <div className="cast-section">
               <h2>Cast</h2>
               <div className="horizontal-slider">
-                {movie.Cast.map(person => (
+                {show.Cast.map(person => (
                   <Link 
                     key={person.id} 
                     className="cast-member" 
@@ -305,60 +309,65 @@ const MovieDetails = () => {
             </div>
           )}
           
-          {movie.Similar && movie.Similar.length > 0 && (
+          {show.Similar && show.Similar.length > 0 && (
             <div className="similar-movies">
-              <h2>Similar Movies</h2>
+              <h2>Similar TV Shows</h2>
               <div className="horizontal-slider">
-                {movie.Similar.slice(0, 10).map(similarMovie => (
+                {show.Similar.slice(0, 10).map(similarShow => (
                   <Link 
-                    to={`/movie/${similarMovie.MovieID}`} 
-                    key={similarMovie.MovieID}
+                    to={`/tv/${similarShow.MovieID}`} 
+                    key={similarShow.MovieID}
                     className="similar-movie-card"
                   >
                     <div className="poster-wrapper">
-                      {similarMovie.PosterPath ? (
+                      {similarShow.PosterPath ? (
                         <img 
-                          src={`https://image.tmdb.org/t/p/w185${similarMovie.PosterPath}`} 
-                          alt={similarMovie.Title} 
+                          src={`https://image.tmdb.org/t/p/w185${similarShow.PosterPath}`} 
+                          alt={similarShow.Title} 
                           className="movie-poster"
                         />
                       ) : (
                         <div className="no-poster">
                           <div>
-                            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🎬</span>
+                            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>📺</span>
                             No image<br />available
                           </div>
                         </div>
                       )}
                       
                       {/* Media type badge */}
-                      {similarMovie.media_type && (
+                      {similarShow.media_type && (
                         <div 
                           className="media-type-badge top-right"
-                          title={similarMovie.media_type === 'tv' ? 'TV Show' : 'Movie'}
+                          title={similarShow.media_type === 'tv' ? 'TV Show' : 'Movie'}
                         >
-                          {similarMovie.media_type === 'tv' ? 'TV' : 'MOVIE'}
+                          {similarShow.media_type === 'tv' ? 'TV' : 'MOVIE'}
                         </div>
                       )}
                       
-                      {similarMovie.VoteAverage !== undefined && similarMovie.VoteAverage > 0 && (
+                      {similarShow.VoteAverage !== undefined && similarShow.VoteAverage > 0 && (
                         <div 
-                          className={`rating-circle ${getRatingColorClass(similarMovie.VoteAverage)}`}
-                          title={`${similarMovie.VoteAverage.toFixed(1)}/10`}
+                          className={`rating-circle ${getRatingColorClass(similarShow.VoteAverage)}`}
+                          title={`${similarShow.VoteAverage.toFixed(1)}/10`}
                         >
-                          {similarMovie.VoteAverage.toFixed(1)}
+                          {similarShow.VoteAverage.toFixed(1)}
                         </div>
                       )}
                     </div>
                     
                     <div className="card-info">
                       <div className="tooltip-container">
-                        <h3 className="movie-title">{similarMovie.Title}</h3>
-                        <span className="tooltip-text">{similarMovie.Title}</span>
+                        <h3 className="movie-title">{similarShow.Title}</h3>
+                        <span className="tooltip-text">{similarShow.Title}</span>
                       </div>
-                      {similarMovie.ReleaseDate && (
+                      {similarShow.media_type && (
+                        <div className="media-type-badge">
+                          {similarShow.media_type === 'tv' ? 'TV' : 'Movie'}
+                        </div>
+                      )}
+                      {similarShow.ReleaseDate && (
                         <div className="release-date">
-                          {new Date(similarMovie.ReleaseDate).toLocaleDateString('en-US', {
+                          {new Date(similarShow.ReleaseDate).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
@@ -377,4 +386,4 @@ const MovieDetails = () => {
   );
 };
 
-export default MovieDetails;
+export default TVDetails;

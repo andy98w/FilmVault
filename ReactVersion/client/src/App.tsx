@@ -8,9 +8,10 @@ import Profile from './pages/Profile';
 import UserProfile from './pages/UserProfile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import MovieSearch from './pages/MovieSearch';
+import SearchPage from './pages/SearchPage';
 import MyMovies from './pages/MyMovies';
 import MovieDetails from './pages/MovieDetails';
+import TVDetails from './pages/TVDetails';
 import PersonDetails from './pages/PersonDetails';
 import './App.css';
 
@@ -33,8 +34,9 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/search" element={<MovieSearch />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/movie/:id" element={<MovieDetails />} />
+          <Route path="/tv/:id" element={<TVDetails />} />
           <Route path="/person/:id" element={<PersonDetails />} />
           <Route path="/user/:id" element={<UserProfile />} />
           

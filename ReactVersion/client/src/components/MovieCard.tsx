@@ -15,6 +15,7 @@ interface Movie {
   VoteAverage?: number;
   average_rating?: number;
   Rating?: number;
+  media_type?: string;
 }
 
 interface MovieCardProps {
@@ -86,10 +87,16 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
     }
   };
   
+  const handleCardClick = () => {
+    // Navigate to the appropriate route based on media_type
+    const mediaType = movie.media_type === 'tv' ? 'tv' : 'movie';
+    navigate(`/${mediaType}/${movie.MovieID}`);
+  };
+
   return (
     <div 
       className="movie-card"
-      onClick={() => navigate(`/movie/${movie.MovieID}`)}
+      onClick={handleCardClick}
     >
       <div className="poster-wrapper">
         {movie.PosterPath ? (
@@ -100,6 +107,16 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
               <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🎬</span>
               No image<br />available
             </div>
+          </div>
+        )}
+        
+        {/* Media type badge in top right */}
+        {movie.media_type && (
+          <div 
+            className="media-type-badge top-right"
+            title={movie.media_type === 'tv' ? 'TV Show' : 'Movie'}
+          >
+            {movie.media_type === 'tv' ? 'TV' : 'MOVIE'}
           </div>
         )}
         

@@ -37,7 +37,7 @@ interface SearchResponse {
   total_results: number;
 }
 
-const MovieSearch = () => {
+const SearchPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,8 +100,8 @@ const MovieSearch = () => {
       setTotalPages(response.data.total_pages);
       setTotalResults(response.data.total_results);
     } catch (err) {
-      console.error(`Error searching ${type === 'person' ? 'people' : 'entertainment'}:`, err);
-      setError(`Failed to search ${type === 'person' ? 'people' : 'entertainment'}. Please try again.`);
+      console.error(`Error searching ${type === 'person' ? 'people' : 'movies and TV shows'}:`, err);
+      setError(`Failed to search ${type === 'person' ? 'people' : 'movies and TV shows'}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -140,13 +140,13 @@ const MovieSearch = () => {
   return (
     <div className="container">
       <div className="search-container">
-        <h2>Search {searchType === 'person' ? 'People' : 'Entertainment'}</h2>
+        <h2>Search</h2>
         <div className="search-box">
           <form onSubmit={handleSearch}>
             <span className="search-icon">🔍</span>
             <input
               type="text"
-              placeholder={`Search ${searchType === 'person' ? 'People' : 'Entertainment'}`}
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -155,7 +155,7 @@ const MovieSearch = () => {
               onChange={(e) => handleTypeChange(e.target.value as 'person' | 'multi')}
               className="search-type-dropdown"
             >
-              <option value="multi">Entertainment</option>
+              <option value="multi">Movies & TV</option>
               <option value="person">People</option>
             </select>
           </form>
@@ -218,7 +218,7 @@ const MovieSearch = () => {
             searchQuery && !loading && (
               <div style={{ textAlign: 'center', marginTop: '50px' }}>
                 <h3>No {searchType === 'person' ? 'people' : 'results'} found matching "{searchQuery}"</h3>
-                <p>Try a different search term or browse our top {searchType === 'person' ? 'actors/actresses' : 'entertainment'}.</p>
+                <p>Try a different search term or browse our top {searchType === 'person' ? 'actors/actresses' : 'movies and TV shows'}.</p>
               </div>
             )
           )}
@@ -228,4 +228,4 @@ const MovieSearch = () => {
   );
 };
 
-export default MovieSearch;
+export default SearchPage;

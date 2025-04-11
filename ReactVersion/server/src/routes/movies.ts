@@ -11,11 +11,12 @@ const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const mapTMDBMovie = (movie: any) => {
   return {
     MovieID: movie.id,
-    Title: movie.title,
+    Title: movie.title || movie.name, // TV shows use 'name' instead of 'title'
     PosterPath: movie.poster_path,
     Overview: movie.overview,
-    ReleaseDate: movie.release_date,
-    VoteAverage: movie.vote_average
+    ReleaseDate: movie.release_date || movie.first_air_date, // TV shows use 'first_air_date'
+    VoteAverage: movie.vote_average,
+    media_type: movie.media_type || 'movie' // Include media type for multi search
   };
 };
 
@@ -44,6 +45,44 @@ router.get('/top', async (req, res) => {
   } catch (error) {
     console.error('Error fetching top movies from TMDB:', error);
     res.status(500).json({ message: 'Error fetching movies from TMDB' });
+  }
+});
+
+// Get top TV shows from TMDB
+router.get('/top-tv', async (req, res) => {
+  try {
+    const { page = 1 } = req.query;
+    
+    const response = await axios.get(`${TMDB_API_URL}/tv/popular`, {
+      params: {
+        api_key: TMDB_API_KEY,
+        language: 'en-US',
+        page: page
+      }
+    });
+    
+    const tvShows = response.data.results.map((show: any) => {
+      return {
+        MovieID: show.id,
+        Title: show.name,
+        PosterPath: show.poster_path,
+        Overview: show.overview,
+        ReleaseDate: show.first_air_date,
+        VoteAverage: show.vote_average,
+        media_type: 'tv'
+      };
+    });
+    
+    // Return pagination info along with the TV shows
+    res.json({
+      results: tvShows,
+      page: response.data.page,
+      total_pages: response.data.total_pages,
+      total_results: response.data.total_results
+    });
+  } catch (error) {
+    console.error('Error fetching top TV shows from TMDB:', error);
+    res.status(500).json({ message: 'Error fetching TV shows from TMDB' });
   }
 });
 
@@ -115,16 +154,28 @@ router.get('/popular-people', async (req, res) => {
   }
 });
 
-// Search movies using TMDB
+// Search movies and TV shows using TMDB
 router.get('/search', async (req, res) => {
   try {
-    const { query, page = 1, type = 'movie' } = req.query;
+    const { query, page = 1, type = 'multi' } = req.query;
     
     if (!query) {
       return res.status(400).json({ message: 'Search query is required' });
     }
     
-    let endpoint = type === 'person' ? 'search/person' : 'search/movie';
+    // Define the search endpoint based on type
+    // 'multi' searches for movies, TV shows, and people in a single request
+    // 'person' searches only for people
+    let endpoint;
+    switch(type) {
+      case 'person':
+        endpoint = 'search/person';
+        break;
+      case 'multi':
+      default:
+        endpoint = 'search/multi'; // This endpoint returns both movies and TV shows
+        break;
+    }
     
     const response = await axios.get(`${TMDB_API_URL}/${endpoint}`, {
       params: {
@@ -149,7 +200,8 @@ router.get('/search', async (req, res) => {
           id: item.id,
           title: item.title || item.name,
           media_type: item.media_type
-        })) || []
+        })) || [],
+        media_type: 'person'
       }));
     } else {
       results = response.data.results.map(mapTMDBMovie);
@@ -172,8 +224,10 @@ router.get('/search', async (req, res) => {
 router.get('/details/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { type = 'movie' } = req.query;
     
-    const response = await axios.get(`${TMDB_API_URL}/movie/${id}`, {
+    const mediaType = type === 'tv' ? 'tv' : 'movie';
+    const response = await axios.get(`${TMDB_API_URL}/${mediaType}/${id}`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -181,25 +235,35 @@ router.get('/details/:id', async (req, res) => {
       }
     });
     
+    let title, releaseDate;
+    if (mediaType === 'tv') {
+      title = response.data.name;
+      releaseDate = response.data.first_air_date;
+    } else {
+      title = response.data.title;
+      releaseDate = response.data.release_date;
+    }
+    
     const movie = {
       MovieID: response.data.id,
-      Title: response.data.title,
+      Title: title,
       PosterPath: response.data.poster_path,
       BackdropPath: response.data.backdrop_path,
       Overview: response.data.overview,
-      ReleaseDate: response.data.release_date,
-      Runtime: response.data.runtime,
+      ReleaseDate: releaseDate,
+      Runtime: response.data.runtime || (response.data.episode_run_time && response.data.episode_run_time[0]),
       Genres: response.data.genres,
       VoteAverage: response.data.vote_average,
       VoteCount: response.data.vote_count,
       Cast: response.data.credits?.cast?.slice(0, 10) || [],
-      Similar: response.data.similar?.results?.map(mapTMDBMovie) || []
+      Similar: response.data.similar?.results?.map(mapTMDBMovie) || [],
+      media_type: mediaType
     };
     
     res.json(movie);
   } catch (error) {
-    console.error('Error fetching movie details from TMDB:', error);
-    res.status(500).json({ message: 'Error fetching movie details' });
+    console.error('Error fetching media details from TMDB:', error);
+    res.status(500).json({ message: 'Error fetching details' });
   }
 });
 
@@ -218,16 +282,29 @@ router.get('/person/:id', async (req, res) => {
     });
     
     // Get most popular movies/shows they're known for
-    const knownFor = response.data.combined_credits?.cast
-      ?.sort((a: any, b: any) => b.popularity - a.popularity)
-      ?.slice(0, 8)
-      ?.map((credit: any) => ({
+    // Process and combine all credits (both movies and TV shows)
+    const combinedCredits = response.data.combined_credits?.cast || [];
+    
+    // Log media types for debugging
+    const mediaTypeCounts = combinedCredits.reduce((acc: any, credit: any) => {
+      const type = credit.media_type || 'unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+    
+    console.log(`Person ${id} has credits: ${JSON.stringify(mediaTypeCounts)}`);
+    
+    // Sort by popularity and take the top 8
+    const knownFor = combinedCredits
+      .sort((a: any, b: any) => b.popularity - a.popularity)
+      .slice(0, 8)
+      .map((credit: any) => ({
         id: credit.id,
-        title: credit.title || credit.name,
+        title: credit.title || credit.name, // TV shows use 'name' instead of 'title'
         poster_path: credit.poster_path,
-        media_type: credit.media_type,
+        media_type: credit.media_type, // 'movie' or 'tv'
         character: credit.character,
-        release_date: credit.release_date || credit.first_air_date,
+        release_date: credit.release_date || credit.first_air_date, // TV shows use 'first_air_date'
         vote_average: credit.vote_average
       })) || [];
     

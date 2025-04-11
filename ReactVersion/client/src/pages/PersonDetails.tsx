@@ -175,7 +175,7 @@ const PersonDetails = () => {
               <div className="horizontal-slider">
                 {person.knownFor.map(credit => (
                   <Link 
-                    to={`/movie/${credit.id}`} 
+                    to={`/${credit.media_type === 'tv' ? 'tv' : 'movie'}/${credit.id}`} 
                     key={`${credit.id}-${credit.character}`}
                     className="known-for-card"
                   >
@@ -189,11 +189,24 @@ const PersonDetails = () => {
                       ) : (
                         <div className="no-poster">
                           <div>
-                            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🎬</span>
+                            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>
+                              {credit.media_type === 'tv' ? '📺' : '🎬'}
+                            </span>
                             No image<br />available
                           </div>
                         </div>
                       )}
+                      
+                      {/* Media type badge */}
+                      {credit.media_type && (
+                        <div 
+                          className="media-type-badge top-right"
+                          title={credit.media_type === 'tv' ? 'TV Show' : 'Movie'}
+                        >
+                          {credit.media_type === 'tv' ? 'TV' : 'MOVIE'}
+                        </div>
+                      )}
+                      
                       {credit.vote_average !== undefined && credit.vote_average > 0 && (
                         <div 
                           className={`rating-circle ${getRatingColorClass(credit.vote_average)}`}

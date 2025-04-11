@@ -41,8 +41,9 @@ interface User {
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'movie' | 'person'>('movie');
+  const [searchType, setSearchType] = useState<'multi' | 'person'>('multi');
   const [topMovies, setTopMovies] = useState<Movie[]>([]);
+  const [topTVShows, setTopTVShows] = useState<Movie[]>([]);
   const [userTopMovies, setUserTopMovies] = useState<Movie[]>([]);
   const [popularPeople, setPopularPeople] = useState<Person[]>([]);
   const [topUsers, setTopUsers] = useState<User[]>([]);
@@ -64,19 +65,22 @@ const Home = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [topMoviesRes, userTopMoviesRes, popularPeopleRes, topUsersRes] = await Promise.all([
+        const [topMoviesRes, topTVShowsRes, userTopMoviesRes, popularPeopleRes, topUsersRes] = await Promise.all([
           axios.get(`${API_URL}/api/movies/top`),
+          axios.get(`${API_URL}/api/movies/top-tv`),
           axios.get(`${API_URL}/api/movies/top-rated`),
           axios.get(`${API_URL}/api/movies/popular-people`),
           axios.get(`${API_URL}/api/users/top`)
         ]);
 
         console.log("Popular Movies Response:", topMoviesRes.data);
+        console.log("Popular TV Shows Response:", topTVShowsRes.data);
         console.log("Top Rated Movies Response:", userTopMoviesRes.data);
         console.log("Popular People Response:", popularPeopleRes.data);
         
         // Handle the new paginated response format
         setTopMovies(topMoviesRes.data.results || topMoviesRes.data);
+        setTopTVShows(topTVShowsRes.data.results || topTVShowsRes.data);
         setUserTopMovies(userTopMoviesRes.data.results || userTopMoviesRes.data);
         setPopularPeople(popularPeopleRes.data.results || popularPeopleRes.data);
         setTopUsers(topUsersRes.data);
@@ -97,7 +101,7 @@ const Home = () => {
     }
   };
   
-  const handleTypeChange = (type: 'movie' | 'person') => {
+  const handleTypeChange = (type: 'multi' | 'person') => {
     setSearchType(type);
   };
 
@@ -126,16 +130,16 @@ const Home = () => {
               <span className="search-icon">🔍</span>
               <input
                 type="text"
-                placeholder={`Search ${searchType === 'movie' ? 'Movie' : 'Actor/Actress'}`}
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <select 
                 value={searchType} 
-                onChange={(e) => handleTypeChange(e.target.value as 'movie' | 'person')}
+                onChange={(e) => handleTypeChange(e.target.value as 'multi' | 'person')}
                 className="search-type-dropdown"
               >
-                <option value="movie">Movies</option>
+                <option value="multi">Movies & TV</option>
                 <option value="person">People</option>
               </select>
             </form>
@@ -152,6 +156,19 @@ const Home = () => {
             ))
           ) : (
             <p>No movies found</p>
+          )}
+        </div>
+      </div>
+
+      <div className="container">
+        <h2>Popular TV shows</h2>
+        <div className="horizontal-slider">
+          {topTVShows && topTVShows.length > 0 ? (
+            topTVShows.map(show => (
+              <MovieCard key={show.MovieID} movie={{...show, media_type: 'tv'}} />
+            ))
+          ) : (
+            <p>No TV shows found</p>
           )}
         </div>
       </div>

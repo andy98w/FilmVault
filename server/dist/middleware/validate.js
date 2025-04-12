@@ -23,7 +23,7 @@ const validate = (validations) => {
             return next();
         }
         // Format validation errors
-        const formattedErrors = errors.array().map(error => ({
+        const formattedErrors = errors.array().map((error) => ({
             field: error.param,
             message: error.msg
         }));

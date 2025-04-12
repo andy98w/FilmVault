@@ -12,12 +12,17 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        // Check if JWT_SECRET is set
+        if (!process.env.JWT_SECRET) {
+            console.error('JWT_SECRET environment variable is not set');
+            return res.status(500).json({ message: 'Server configuration error' });
+        }
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     }
     catch (error) {
-        return res.status(403).json({ message: 'Invalid token.' });
+        return res.status(403).json({ message: 'Invalid or expired token.' });
     }
 };
 exports.authenticateToken = authenticateToken;

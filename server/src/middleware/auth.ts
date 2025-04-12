@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-interface UserPayload {
+export interface UserPayload {
   id: number;
   username: string;
   email: string;
+  isAdmin?: boolean;
 }
 
 // Extend Express Request type
@@ -25,14 +26,20 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
   
   try {
+    // Check if JWT_SECRET is set
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET environment variable is not set');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+    
     const decoded = jwt.verify(
       token, 
-      process.env.JWT_SECRET || 'fallback_secret'
+      process.env.JWT_SECRET
     ) as UserPayload;
     
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(403).json({ message: 'Invalid token.' });
+    return res.status(403).json({ message: 'Invalid or expired token.' });
   }
 };

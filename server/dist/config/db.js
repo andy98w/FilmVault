@@ -27,9 +27,9 @@ const ociConfig = {
 // Log database configuration
 console.log('OCI Database Configuration:');
 console.log(`  Region: ${ociConfig.region}`);
-console.log(`  Host: ${process.env.DB_HOST || 'oci-mysql-endpoint'}`);
+console.log(`  Host: ${process.env.DB_HOST || '40.233.72.63'}`);
 console.log(`  User: ${process.env.DB_USER || 'admin'}`);
-console.log(`  Database: ${process.env.DB_NAME || 'filmvault'}`);
+console.log(`  Database: ${process.env.DB_NAME || 'myfavmovies'}`);
 // Check if we're using mock data (automatically use mock if env var is set or connection fails)
 let useMockData = process.env.USE_MOCK_DATA === 'true';
 // Create a mock database interface that mimics the MySQL pool
@@ -92,16 +92,16 @@ try {
     }
     // Create connection pool
     pool = promise_1.default.createPool({
-        host: process.env.DB_HOST || 'oci-mysql-endpoint', // Replace with your OCI MySQL endpoint
+        host: process.env.DB_HOST || process.env.DB_NLB_IP || '40.233.72.63', // NLB public IP from Terraform output
         user: process.env.DB_USER || 'admin',
         password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'filmvault',
+        database: process.env.DB_NAME || 'myfavmovies',
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0,
         ssl: {
-            // For OCI MySQL, you might need specific SSL settings
-            rejectUnauthorized: true
+            // Allow self-signed certificates from OCI MySQL
+            rejectUnauthorized: false
         }
     });
     // Test the connection
@@ -109,11 +109,21 @@ try {
         try {
             const connection = yield pool.getConnection();
             console.log('OCI Database connection successful!');
+            // Try to get database info
+            try {
+                const [rows] = yield connection.query('SHOW TABLES');
+                console.log('Tables in database:');
+                console.table(rows);
+            }
+            catch (queryErr) {
+                console.warn('Connected but could not query database:', queryErr);
+            }
             connection.release();
             return true;
         }
         catch (error) {
             console.error('Error connecting to OCI database:', error);
+            console.log('Check db-connection-checklist.md for troubleshooting steps');
             // Switch to mock data if connection fails
             useMockData = true;
             pool = createMockPool();

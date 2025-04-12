@@ -6,7 +6,7 @@ import PersonCard from '../components/PersonCard';
 import Pagination from '../components/Pagination';
 
 // API base URL
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 interface Movie {
   MovieID: number;
@@ -139,8 +139,7 @@ const SearchPage = () => {
 
   return (
     <div className="container">
-      <div className="search-container">
-        <h2>Search</h2>
+      <div className="search-container" style={{ marginTop: '120px' }}>
         <div className="search-box">
           <form onSubmit={handleSearch}>
             <span className="search-icon">🔍</span>
@@ -179,9 +178,8 @@ const SearchPage = () => {
         <>
           {searchType === 'multi' && movieResults.length > 0 ? (
             <>
-              <h2>Search Results</h2>
               {totalResults > 0 && (
-                <p style={{ fontSize: '18px', marginTop: '10px' }}>Found {totalResults} results for "{searchQuery}"</p>
+                <p style={{ fontSize: '18px', marginTop: '40px', marginBottom: '20px' }}>Found {totalResults} results for "{searchQuery}"</p>
               )}
               <div className="movie-grid" style={getGridStyle()}>
                 {/* Only show first 18 items (3 rows of 6) */}
@@ -199,9 +197,8 @@ const SearchPage = () => {
             </>
           ) : searchType === 'person' && personResults.length > 0 ? (
             <>
-              <h2>Search Results</h2>
               {totalResults > 0 && (
-                <p style={{ fontSize: '18px', marginTop: '10px' }}>Found {totalResults} people results for "{searchQuery}"</p>
+                <p style={{ fontSize: '18px', marginTop: '40px', marginBottom: '20px' }}>Found {totalResults} people results for "{searchQuery}"</p>
               )}
               <div className="movie-grid" style={getGridStyle()}>
                 {/* Only show first 18 items (3 rows of 6) */}

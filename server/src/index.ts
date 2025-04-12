@@ -1,51 +1,146 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
+import pool from './config/db';
 import authRoutes from './routes/auth';
 import movieRoutes from './routes/movies';
 import userRoutes from './routes/users';
-import './config/db'; // Initialize database connection
-import { ociConfig } from './config/oci'; // Import OCI configuration
+import adminRoutes from './routes/admin';
+import { errorHandler } from './middleware/error';
 
 // Load environment variables
 dotenv.config();
 
-// Initialize Express app
+// Create Express app
 const app = express();
-const PORT = process.env.PORT || 5001;
-
-// Check OCI configuration
-if (ociConfig.isConfigValid()) {
-  console.log('OCI configuration loaded successfully');
-} else {
-  console.warn('OCI configuration is not valid or missing. Using fallback configuration.');
-}
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
-// Log all requests for debugging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
+// Database initialization function
+async function initializeDatabase() {
+  try {
+    console.log('Checking if database schema needs initialization...');
+    const connection = await pool.getConnection();
+    
+    try {
+      // Check if users table exists
+      const [tables] = await connection.query("SHOW TABLES LIKE 'users'");
+      
+      if (tables.length === 0) {
+        console.log('Database schema not found. Initializing...');
+        
+        // Create tables
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            Usernames VARCHAR(255) NOT NULL,
+            Emails VARCHAR(255) UNIQUE NOT NULL,
+            Passwords VARCHAR(255) NOT NULL,
+            ProfilePic VARCHAR(255) DEFAULT 'default.jpg',
+            Biography TEXT NULL,
+            FacebookLink VARCHAR(255) NULL,
+            InstagramLink VARCHAR(255) NULL,
+            YoutubeLink VARCHAR(255) NULL,
+            GithubLink VARCHAR(255) NULL,
+            email_verified_at TIMESTAMP NULL,
+            verification_token VARCHAR(255) NULL,
+            reset_token VARCHAR(255) NULL
+          )
+        `);
+        
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS movies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tmdb_id INT UNIQUE NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            poster_path VARCHAR(255),
+            release_date DATE,
+            overview TEXT
+          )
+        `);
+        
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS user_movies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            movie_id INT,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+          )
+        `);
+        
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS movie_ratings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            movie_id INT,
+            rating DECIMAL(3,1) CHECK (rating >= 0 AND rating <= 10),
+            rated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+          )
+        `);
+        
+        console.log('Database schema initialized successfully!');
+      } else {
+        console.log('Database schema already exists.');
+      }
+    } catch (error) {
+      console.error('Error initializing database schema:', error);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    console.log('Using mock data mode...');
+  }
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
-// Default route
-app.get('/', (req, res) => {
-  res.send('FilmVault API is running');
+// Root route for API status
+app.get('/', (req: Request, res: Response) => {
+  res.json({ 
+    message: 'FilmVault API is running',
+    version: '1.0.0',
+    status: 'online',
+    dbConnection: process.env.USE_MOCK_DATA === 'true' ? 'mock' : 'live'
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Error handler middleware
+app.use(errorHandler);
+
+// Start the server after attempting database initialization
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`API URL: http://localhost:${PORT}`);
+      console.log(`Database Mode: ${process.env.USE_MOCK_DATA === 'true' ? 'MOCK' : 'LIVE'}`);
+    });
+  })
+  .catch(error => {
+    console.error('Failed to start server with database initialization:', error);
+    
+    // Start server anyway, will use mock data if DB connection fails
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} (without database initialization)`);
+      console.log(`API URL: http://localhost:${PORT}`);
+      console.log(`Database Mode: ${process.env.USE_MOCK_DATA === 'true' ? 'MOCK' : 'LIVE'}`);
+    });
+  });
+
+export default app;

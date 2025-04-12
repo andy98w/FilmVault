@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getRatingColorClass } from '../components/MovieCard';
 
 // API base URL
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 interface CastMember {
   id: number;
@@ -210,7 +210,6 @@ const TVDetails = () => {
             <div className="movie-info">
               <h1>
                 {show.Title} <span className="release-year">({formatReleaseDate(show.ReleaseDate)})</span>
-                <span className="media-type-badge" style={{ marginLeft: '10px', fontSize: '0.6em' }}>TV</span>
               </h1>
               
               <div className="movie-meta">
@@ -314,7 +313,7 @@ const TVDetails = () => {
           
           {show.Similar && show.Similar.length > 0 && (
             <div className="similar-movies">
-              <h2>Similar TV Shows</h2>
+              <h2>Similar</h2>
               <div className="horizontal-slider">
                 {show.Similar.slice(0, 10).map(similarShow => (
                   <Link 
@@ -363,11 +362,6 @@ const TVDetails = () => {
                         <h3 className="movie-title">{similarShow.Title}</h3>
                         <span className="tooltip-text">{similarShow.Title}</span>
                       </div>
-                      {similarShow.media_type && (
-                        <div className="media-type-badge">
-                          {similarShow.media_type === 'tv' ? 'TV' : 'Movie'}
-                        </div>
-                      )}
                       {similarShow.ReleaseDate && (
                         <div className="release-date">
                           {new Date(similarShow.ReleaseDate).toLocaleDateString('en-US', {

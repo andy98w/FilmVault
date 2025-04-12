@@ -66,7 +66,7 @@ const errorHandler = (err, req, res, next) => {
         errorCode = exports.ERROR_CODES.VALIDATION_ERROR;
     }
     // Don't expose error details in production
-    if (process.env.NODE_ENV === 'production' && !err instanceof ApiError) {
+    if (process.env.NODE_ENV === 'production' && !(err instanceof ApiError)) {
         message = 'Something went wrong';
     }
     // Send standardized error response

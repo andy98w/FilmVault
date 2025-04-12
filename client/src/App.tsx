@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import UserProfile from './pages/UserProfile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import SearchPage from './pages/SearchPage';
 import MyMovies from './pages/MyMovies';
 import MovieDetails from './pages/MovieDetails';
@@ -48,6 +49,7 @@ function AppContent() {
           <Route path="/register" element={<TransitionWrapper component={Register} />} />
           <Route path="/forgot-password" element={<TransitionWrapper component={ForgotPassword} />} />
           <Route path="/reset-password" element={<TransitionWrapper component={ResetPassword} />} />
+          <Route path="/verify-email" element={<TransitionWrapper component={VerifyEmail} />} />
           <Route path="/search" element={<TransitionWrapper component={SearchPage} />} />
           <Route path="/movie/:id" element={<TransitionWrapper component={MovieDetails} />} />
           <Route path="/tv/:id" element={<TransitionWrapper component={TVDetails} />} />

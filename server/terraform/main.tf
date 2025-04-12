@@ -45,7 +45,7 @@ variable "subnet_cidr_block" {
 variable "mysql_shape" {
   description = "Shape for the MySQL instance"
   type        = string
-  default     = "MySQL.VM.Standard.E3.1.8GB"
+  default     = "MySQL.VM.Standard.E2.1"
 }
 
 variable "mysql_storage_size_gb" {
@@ -58,6 +58,12 @@ variable "region" {
   description = "OCI region"
   type        = string
   default     = "ca-toronto-1"
+}
+
+variable "ssh_public_key_path" {
+  description = "Path to the SSH public key for instance access"
+  type        = string
+  default     = "~/.ssh/id_rsa.pub"
 }
 
 # MySQL Database System
@@ -143,16 +149,11 @@ resource "oci_core_security_list" "mysql_security_list" {
   vcn_id         = oci_core_vcn.mysql_vcn.id
   display_name   = "mysql-security-list"
 
-  # Allow MySQL traffic
+  # Allow all inbound traffic
   ingress_security_rules {
-    protocol    = "6" # TCP
+    protocol    = "all"
     source      = "0.0.0.0/0"
     source_type = "CIDR_BLOCK"
-    
-    tcp_options {
-      min = 3306
-      max = 3306
-    }
   }
 
   # Allow all outbound traffic
@@ -168,16 +169,64 @@ data "oci_identity_availability_domains" "ads" {
   compartment_id = var.compartment_id
 }
 
+# Network Load Balancer
+resource "oci_network_load_balancer_network_load_balancer" "mysql_nlb" {
+  compartment_id = var.compartment_id
+  display_name   = "mysql-nlb"
+  subnet_id      = oci_core_subnet.mysql_subnet.id
+  
+  is_private                     = false
+  is_preserve_source_destination = false
+}
+
+# Backend Set for MySQL
+resource "oci_network_load_balancer_backend_set" "mysql_backend_set" {
+  name                     = "mysql-backend-set"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.mysql_nlb.id
+  policy                   = "FIVE_TUPLE"
+  
+  health_checker {
+    protocol          = "TCP"
+    port              = 3306
+    interval_in_millis = 10000
+    timeout_in_millis  = 3000
+    retries            = 3
+  }
+}
+
+# Backend for MySQL
+resource "oci_network_load_balancer_backend" "mysql_backend" {
+  backend_set_name         = oci_network_load_balancer_backend_set.mysql_backend_set.name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.mysql_nlb.id
+  port                     = 3306
+  ip_address               = oci_mysql_mysql_db_system.myfavmovies_db.endpoints[0].ip_address
+}
+
+# Listener for MySQL
+resource "oci_network_load_balancer_listener" "mysql_listener" {
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.mysql_nlb.id
+  name                     = "mysql-listener"
+  default_backend_set_name = oci_network_load_balancer_backend_set.mysql_backend_set.name
+  port                     = 3306
+  protocol                 = "TCP"
+}
+
 # Output the MySQL endpoint for connection
 output "mysql_endpoint" {
   value = "${oci_mysql_mysql_db_system.myfavmovies_db.endpoints[0].hostname}:${oci_mysql_mysql_db_system.myfavmovies_db.endpoints[0].port}"
+}
+
+# Output the NLB public IP for connection
+output "mysql_nlb_public_ip" {
+  value = oci_network_load_balancer_network_load_balancer.mysql_nlb.ip_addresses[0].ip_address
 }
 
 # Output connection information
 output "mysql_connection_info" {
   value = {
     hostname = oci_mysql_mysql_db_system.myfavmovies_db.endpoints[0].hostname
-    port     = oci_mysql_mysql_db_system.myfavmovies_db.endpoints[0].port
+    nlb_ip   = oci_network_load_balancer_network_load_balancer.mysql_nlb.ip_addresses[0].ip_address
+    port     = 3306
     username = "admin" # This is the admin username you set
     database = "myfavmovies" # You'll need to create this database after MySQL is deployed
   }

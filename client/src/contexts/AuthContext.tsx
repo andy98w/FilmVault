@@ -2,13 +2,14 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import axios from 'axios';
 
 // API base URL
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 interface User {
   id: number;
   username: string;
   email: string;
   profilePic?: string;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ interface AuthContextType {
   logout: () => void;
   loading: boolean;
   error: string | null;
+  isAdmin: boolean; // Quick helper to check admin status
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,7 +65,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         id: response.data.id,
         username: response.data.Usernames,
         email: response.data.Emails,
-        profilePic: response.data.ProfilePic
+        profilePic: response.data.ProfilePic,
+        isAdmin: response.data.is_admin === 1
       });
     } catch (err) {
       console.error('Failed to get user data', err);
@@ -79,7 +82,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
       localStorage.setItem('token', response.data.token);
-      setUser(response.data.user);
+      
+      // User data from login includes isAdmin flag
+      setUser({
+        ...response.data.user,
+        isAdmin: response.data.user.isAdmin || false
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login');
       throw err;
@@ -113,7 +121,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     register,
     logout,
     loading,
-    error
+    error,
+    isAdmin: !!user?.isAdmin // Helper property for checking admin status
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

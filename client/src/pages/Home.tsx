@@ -5,7 +5,7 @@ import MovieCard from '../components/MovieCard';
 import UserTable from '../components/UserTable';
 
 // API base URL
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 interface Movie {
   MovieID: number;
@@ -289,7 +289,7 @@ const Home = () => {
       </div>
 
       <div className="container">
-        <h2>Top rated on MyFavMovies</h2>
+        <h2>Top rated on FilmVault</h2>
         <div className="horizontal-slider">
           {userTopMovies && userTopMovies.length > 0 ? (
             userTopMovies.map(movie => (
@@ -302,7 +302,7 @@ const Home = () => {
       </div>
 
       <div className="container">
-        <h2>Most Contributed Users</h2>
+        <h2>Top Contributors {topUsers.length > 0 ? `(${topUsers.length})` : ''}</h2>
         <UserTable users={topUsers} />
       </div>
     </div>

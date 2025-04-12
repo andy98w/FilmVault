@@ -167,3 +167,20 @@ override.tf.json
 terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij,react,terraform
+
+# Environment files
+.env*
+!.env.example
+client/.env*
+!client/.env.example
+server/.env*
+!server/.env.example
+
+# Build directories
+client/build/
+
+# IDE files
+.idea/
+
+# Terraform cloud-init files
+server/terraform/scripts/cloud-init.tpl

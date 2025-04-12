@@ -15,6 +15,7 @@ interface ExtendedUser {
   InstagramLink?: string;
   YoutubeLink?: string;
   GithubLink?: string;
+  LinkedInLink?: string;
 }
 
 const Profile = () => {
@@ -30,6 +31,7 @@ const Profile = () => {
   const [instagramLink, setInstagramLink] = useState('');
   const [youtubeLink, setYoutubeLink] = useState('');
   const [githubLink, setGithubLink] = useState('');
+  const [linkedinLink, setLinkedinLink] = useState('');
   
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -56,6 +58,7 @@ const Profile = () => {
         setInstagramLink(response.data.InstagramLink || '');
         setYoutubeLink(response.data.YoutubeLink || '');
         setGithubLink(response.data.GithubLink || '');
+        setLinkedinLink(response.data.LinkedInLink || '');
       } catch (err) {
         console.error('Error fetching user profile:', err);
         setError('Failed to load your profile. Please try again later.');
@@ -83,7 +86,8 @@ const Profile = () => {
           facebook_link: facebookLink,
           instagram_link: instagramLink,
           youtube_link: youtubeLink,
-          github_link: githubLink
+          github_link: githubLink,
+          linkedin_link: linkedinLink
         },
         {
           headers: {
@@ -94,6 +98,11 @@ const Profile = () => {
       
       setMessage('Profile updated successfully');
       setEditMode(false);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
     } catch (err) {
       console.error('Error updating profile:', err);
       setError('Failed to update profile. Please try again.');
@@ -108,11 +117,19 @@ const Profile = () => {
     
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
       return;
     }
     
     if (newPassword.length < 6) {
       setError('New password must be at least 6 characters long');
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
       return;
     }
     
@@ -138,9 +155,19 @@ const Profile = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
     } catch (err: any) {
       console.error('Error changing password:', err);
       setError(err.response?.data?.message || 'Failed to change password. Please try again.');
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
     } finally {
       setLoading(false);
     }
@@ -171,14 +198,22 @@ const Profile = () => {
       </div>
 
       {error && (
-        <div className="message error">
-          <p>{error}</p>
+        <div className="notification notification-error">
+          <div className="notification-icon">⚠️</div>
+          <div className="notification-content">
+            <div className="notification-title">Error</div>
+            <div className="notification-message">{error}</div>
+          </div>
         </div>
       )}
 
       {message && (
-        <div className="message success">
-          <p>{message}</p>
+        <div className="notification notification-success">
+          <div className="notification-icon">✅</div>
+          <div className="notification-content">
+            <div className="notification-title">Success</div>
+            <div className="notification-message">{message}</div>
+          </div>
         </div>
       )}
       
@@ -324,7 +359,7 @@ const Profile = () => {
                 />
               </div>
               
-              <div style={{ marginBottom: '30px' }}>
+              <div style={{ marginBottom: '20px' }}>
                 <label htmlFor="github" style={{ display: 'block', marginBottom: '8px' }}>
                   <i style={{ marginRight: '8px', color: '#FFFFFF' }}>🐙</i> GitHub
                 </label>
@@ -334,6 +369,23 @@ const Profile = () => {
                   value={githubLink}
                   onChange={(e) => setGithubLink(e.target.value)}
                   placeholder="https://github.com/yourusername"
+                  style={{ 
+                    width: '100%',
+                    background: 'var(--nav-background)',
+                  }}
+                />
+              </div>
+              
+              <div style={{ marginBottom: '30px' }}>
+                <label htmlFor="linkedin" style={{ display: 'block', marginBottom: '8px' }}>
+                  <i style={{ marginRight: '8px', color: '#0077B5' }}>💼</i> LinkedIn
+                </label>
+                <input 
+                  type="url"
+                  id="linkedin"
+                  value={linkedinLink}
+                  onChange={(e) => setLinkedinLink(e.target.value)}
+                  placeholder="https://linkedin.com/in/yourusername"
                   style={{ 
                     width: '100%',
                     background: 'var(--nav-background)',
@@ -463,7 +515,28 @@ const Profile = () => {
                   </a>
                 )}
                 
-                {!facebookLink && !instagramLink && !youtubeLink && !githubLink && (
+                {linkedinLink && (
+                  <a 
+                    href={linkedinLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      padding: '10px 15px',
+                      background: '#0077B5',
+                      color: 'white',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    <span style={{ marginRight: '8px' }}>💼</span>
+                    LinkedIn
+                  </a>
+                )}
+                
+                {!facebookLink && !instagramLink && !youtubeLink && !githubLink && !linkedinLink && (
                   <p style={{ opacity: 0.7, fontStyle: 'italic' }}>No social media links provided. Click 'Edit Profile' to add your social media profiles.</p>
                 )}
               </div>

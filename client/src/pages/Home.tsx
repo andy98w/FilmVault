@@ -60,6 +60,11 @@ const Home = () => {
       setMessage(urlMessage);
       // Remove the message from URL
       navigate('/', { replace: true });
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
     }
     
     // We should NEVER test TMDB API in the frontend directly
@@ -186,8 +191,12 @@ const Home = () => {
   return (
     <div>
       {message && (
-        <div className="message success">
-          <p>{message}</p>
+        <div className="notification notification-success">
+          <div className="notification-icon">✅</div>
+          <div className="notification-content">
+            <div className="notification-title">Success</div>
+            <div className="notification-message">{message}</div>
+          </div>
         </div>
       )}
 

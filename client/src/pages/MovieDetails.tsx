@@ -41,6 +41,7 @@ const MovieDetails = () => {
   const [error, setError] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const [isInList, setIsInList] = useState(false);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -98,16 +99,19 @@ const MovieDetails = () => {
       });
       
       setMessage('Movie added to your list!');
+      setMessageType('success');
       setIsInList(true);
     } catch (error: any) {
       setMessage(error.response?.data?.message || 'Error adding movie');
+      setMessageType('error');
     } finally {
       setIsAdding(false);
       
-      // Clear message after 3 seconds
+      // Clear message after 5 seconds
       setTimeout(() => {
         setMessage('');
-      }, 3000);
+        setMessageType('success'); // Reset to default for next use
+      }, 5000);
     }
   };
   
@@ -122,14 +126,17 @@ const MovieDetails = () => {
       });
       
       setMessage('Movie removed from your list');
+      setMessageType('success');
       setIsInList(false);
     } catch (error: any) {
       setMessage(error.response?.data?.message || 'Error removing movie');
+      setMessageType('error');
     } finally {
-      // Clear message after 3 seconds
+      // Clear message after 5 seconds
       setTimeout(() => {
         setMessage('');
-      }, 3000);
+        setMessageType('success'); // Reset to default for next use
+      }, 5000);
     }
   };
   
@@ -232,7 +239,7 @@ const MovieDetails = () => {
                 <p>{movie.Overview || 'No overview available.'}</p>
               </div>
               
-              <div className="movie-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', marginBottom: '10px' }}>
+              <div className="movie-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: '20px', marginBottom: '10px' }}>
                 {isAuthenticated ? (
                   <>
                     {isInList ? (
@@ -255,7 +262,13 @@ const MovieDetails = () => {
                     )}
                     
                     {message && (
-                      <div className="action-message">{message}</div>
+                      <div className={`notification notification-${messageType}`}>
+                        <div className="notification-icon">{messageType === 'success' ? '✅' : '⚠️'}</div>
+                        <div className="notification-content">
+                          <div className="notification-title">{messageType === 'success' ? 'Success' : 'Error'}</div>
+                          <div className="notification-message">{message}</div>
+                        </div>
+                      </div>
                     )}
                   </>
                 ) : (

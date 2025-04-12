@@ -5,11 +5,19 @@
   --background-dark: #212121;
   --nav-background: #3F3F3F;
   --text-color: #FFFFFF;
-  --error-bg: #F2DEDE;
-  --error-text: #0c0101;
-  --success-bg: #DFF0D8;
-  --success-text: #3c763d;
-  --info-bg: rgb(156, 218, 255);
+  
+  /* Notification colors */
+  --error-bg: rgba(220, 53, 69, 0.15);
+  --error-border: rgba(220, 53, 69, 0.5);
+  --error-text: #dc3545;
+  
+  --success-bg: rgba(40, 167, 69, 0.15);
+  --success-border: rgba(40, 167, 69, 0.5);
+  --success-text: #28a745;
+  
+  --info-bg: rgba(13, 202, 240, 0.15);
+  --info-border: rgba(13, 202, 240, 0.5);
+  --info-text: #0dcaf0;
   
   /* Spacing */
   --spacing-xs: 5px;
@@ -322,20 +330,83 @@ button:hover {
 }
 
 .alert {
-  padding: 10px;
+  padding: 15px;
   width: 95%;
   border-radius: 5px;
-  margin: 20px auto;
+  margin: 15px auto;
 }
 
 .alert-error {
-  background: #F2DEDE;
-  color: #0c0101;
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  border-left: 4px solid var(--error-text);
 }
 
 .alert-success {
-  background: #DFF0D8;
-  color: #3c763d;
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border-left: 4px solid var(--success-text);
+}
+
+/* Elegant notification styles */
+.notification {
+  padding: 16px 20px;
+  margin: 15px 0;
+  border-radius: var(--border-radius-md);
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  border-left: 4px solid;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: notificationFadeIn 0.3s ease-in-out;
+  transition: all 0.2s ease;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: var(--font-md);
+}
+
+.notification-message {
+  font-size: var(--font-sm);
+  opacity: 0.9;
+}
+
+.notification-icon {
+  margin-right: 15px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-success {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-text);
+}
+
+.notification-error {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  border-color: var(--error-text);
+}
+
+.notification-info {
+  background-color: var(--info-bg);
+  color: var(--info-text);
+  border-color: var(--info-text);
+}
+
+@keyframes notificationFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Movie Grid */

@@ -7,7 +7,8 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "generate-oci-config": "node scripts/generate-oci-config.js",
-    "setup-env": "npm run generate-oci-config"
+    "setup-env": "npm run generate-oci-config",
+    "migrate-linkedin": "ts-node src/linkedin-migration.ts"
   },
   "keywords": [],
   "author": "",

@@ -24,11 +24,11 @@ router.get('/top', async (req, res) => {
     const [ratingsColumns] = await pool.query('SHOW COLUMNS FROM movie_ratings');
     console.log('movie_ratings table columns:', ratingsColumns);
     
-    // Use the correct column names based on the actual database schema
+    // Use the correct column names and improved query to accurately count movies
     const [rows] = await pool.query(
       'SELECT users.id, users.Usernames, users.ProfilePic, ' +
-      'COUNT(user_movies.movie_id) as movie_count, ' +
-      'COUNT(movie_ratings.rating) as rating_count ' +
+      'COUNT(DISTINCT user_movies.movie_id) as movie_count, ' +
+      'COUNT(DISTINCT movie_ratings.id) as rating_count ' +
       'FROM users ' +
       'LEFT JOIN user_movies ON users.id = user_movies.user_id ' +
       'LEFT JOIN movie_ratings ON users.id = movie_ratings.user_id ' +
@@ -76,15 +76,29 @@ router.get('/profile/:id', async (req, res) => {
     console.log(`Fetching movies for user ID ${id}...`);
     let movies;
     try {
+      // Query for user's movies
       [movies] = await pool.query(
-        'SELECT movies.*, movie_ratings.rating ' +
-        'FROM user_movies ' +
-        'JOIN movies ON user_movies.movie_id = movies.id ' +
-        'LEFT JOIN movie_ratings ON user_movies.movie_id = movie_ratings.movie_id AND movie_ratings.user_id = ? ' +
-        'WHERE user_movies.user_id = ?',
+        'SELECT DISTINCT m.id, m.tmdb_id, m.title, m.poster_path, m.overview, m.release_date, mr.rating ' +
+        'FROM user_movies um ' +
+        'JOIN movies m ON um.movie_id = m.id ' +
+        'LEFT JOIN movie_ratings mr ON m.id = mr.movie_id AND mr.user_id = ? ' +
+        'WHERE um.user_id = ?',
         [id, id]
       );
       console.log(`Found ${(movies as any[]).length} movies for user ${id}`);
+      
+      // Transform database column names to match the expected format in the client
+      const transformedMovies = (movies as any[]).map(movie => ({
+        MovieID: movie.tmdb_id,
+        Title: movie.title,
+        PosterPath: movie.poster_path,
+        Overview: movie.overview,
+        ReleaseDate: movie.release_date,
+        Rating: movie.rating
+      }));
+      
+      console.log(`Transformed ${transformedMovies.length} movies to client format`);
+      movies = transformedMovies;
     } catch (movieQueryError) {
       console.error('Error fetching user movies:', movieQueryError);
       throw movieQueryError;
@@ -114,7 +128,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     // Get user info
     try {
       const [users] = await pool.query(
-        'SELECT id, Usernames, Emails, ProfilePic, Biography, FacebookLink, InstagramLink, YoutubeLink, GithubLink FROM users WHERE id = ?',
+        'SELECT id, Usernames, Emails, ProfilePic, Biography, FacebookLink, InstagramLink, YoutubeLink, GithubLink, LinkedInLink FROM users WHERE id = ?',
         [userId]
       );
       
@@ -148,7 +162,8 @@ router.put('/update', authenticateToken, async (req, res) => {
       facebook_link, 
       instagram_link, 
       youtube_link, 
-      github_link 
+      github_link,
+      linkedin_link
     } = req.body;
     
     const userId = req.user?.id;
@@ -189,6 +204,11 @@ router.put('/update', authenticateToken, async (req, res) => {
     if (github_link !== undefined) {
       updates.GithubLink = '?';
       params.push(github_link);
+    }
+    
+    if (linkedin_link !== undefined) {
+      updates.LinkedInLink = '?';
+      params.push(linkedin_link);
     }
     
     if (Object.keys(updates).length === 0) {

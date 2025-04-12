@@ -6,9 +6,10 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 const VerifyEmail = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [manualToken, setManualToken] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,34 +20,47 @@ const VerifyEmail = () => {
     
     if (errorParam) {
       setError(errorParam);
-      setLoading(false);
       return;
     }
     
-    if (!token) {
-      setError('Verification token is missing. Please check the link from your email.');
+    if (token) {
+      // Auto-verify if token is in URL
+      verifyEmailWithToken(token);
+    }
+  }, [location.search]);
+
+  const verifyEmailWithToken = async (token: string) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      console.log(`Verifying email with token: ${token}`);
+      const response = await axios.post(`${API_URL}/api/auth/verify-email`, { token });
+      setSuccess(response.data.message);
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        navigate('/login?verified=true');
+      }, 3000);
+    } catch (err: any) {
+      console.error('Email verification error:', err);
+      setError(err.response?.data?.message || 'Failed to verify email. The token may be invalid or expired.');
+    } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleManualVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!manualToken) {
+      setError('Please enter a verification token');
       return;
     }
     
-    const verifyEmail = async () => {
-      try {
-        const response = await axios.post(`${API_URL}/api/auth/verify-email`, { token });
-        setSuccess(response.data.message);
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          navigate('/login?verified=true');
-        }, 3000);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to verify email. The token may be invalid or expired.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    verifyEmail();
-  }, [location.search, navigate]);
+    await verifyEmailWithToken(manualToken);
+  };
 
   return (
     <div className="auth-page">
@@ -74,21 +88,59 @@ const VerifyEmail = () => {
           )}
           
           {error && (
-            <div className="alert alert-error">
-              <p>{error}</p>
-              <button 
-                onClick={() => navigate('/login')}
-                style={{ marginTop: '20px' }}
-              >
-                Go to Login
-              </button>
+            <div className="notification notification-error">
+              <div className="notification-icon">⚠️</div>
+              <div className="notification-content">
+                <div className="notification-title">Verification Error</div>
+                <div className="notification-message">{error}</div>
+              </div>
             </div>
           )}
           
           {success && (
-            <div className="alert alert-success">
-              <p>{success}</p>
-              <p style={{ marginTop: '10px' }}>Redirecting to login page...</p>
+            <div className="notification notification-success">
+              <div className="notification-icon">✅</div>
+              <div className="notification-content">
+                <div className="notification-title">Success!</div>
+                <div className="notification-message">
+                  {success}
+                  <p style={{ marginTop: '8px', opacity: 0.8 }}>Redirecting to login page...</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {!loading && !success && (
+            <div>
+              <p>Please enter your verification token below if you didn't arrive via an email link:</p>
+              <form onSubmit={handleManualVerification}>
+                <div>
+                  <label htmlFor="token">Verification Token</label>
+                  <input
+                    type="text"
+                    id="token"
+                    value={manualToken}
+                    onChange={(e) => setManualToken(e.target.value)}
+                    placeholder="Enter verification token"
+                  />
+                </div>
+                <button type="submit">Verify Email</button>
+              </form>
+              
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <button 
+                  onClick={() => navigate('/login')}
+                  style={{ 
+                    background: 'transparent', 
+                    border: 'none', 
+                    color: 'var(--primary-color)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer' 
+                  }}
+                >
+                  Back to Login
+                </button>
+              </div>
             </div>
           )}
         </div>

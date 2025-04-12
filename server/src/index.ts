@@ -120,6 +120,25 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
+// Catch-all route for debugging non-matched paths
+app.get('*', (req: Request, res: Response) => {
+  console.log(`Unmatched route: ${req.originalUrl}`);
+  
+  // Check if this is a verification or reset request
+  if (req.originalUrl.includes('verify-email')) {
+    console.log('Redirecting unmatched verify-email request to client');
+    return res.redirect(`${process.env.CLIENT_URL}/verify-email`);
+  } else if (req.originalUrl.includes('reset-password')) {
+    console.log('Redirecting unmatched reset-password request to client');
+    return res.redirect(`${process.env.CLIENT_URL}/reset-password`);
+  }
+  
+  res.status(404).json({
+    message: 'Route not found',
+    requestedPath: req.originalUrl
+  });
+});
+
 // Error handler middleware
 app.use(errorHandler);
 

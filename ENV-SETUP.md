@@ -1,113 +1,103 @@
-# FilmVault Environment Variables Setup
+# Environment Setup Guide for FilmVault
 
-## Overview
-
-This document explains how to set up the environment variables required for both the FilmVault client and server applications.
-
-## Server Environment Variables
-
-Create a `.env` file in the server directory with the following variables:
-
-```
-# Server environment variables
-PORT=5001                        # The port the server will run on
-CLIENT_URL=http://localhost:3000 # The URL of the client application
-
-# JWT Authentication
-JWT_SECRET=your_jwt_secret_here  # Secret key for JWT token generation (generate a secure random string)
-
-# Database Configuration
-DB_HOST=localhost                # Database host
-DB_USER=username                 # Database username
-DB_PASSWORD=password             # Database password
-DB_NAME=myfavmovies             # Database name
-DB_NLB_IP=                      # Optional: Network Load Balancer IP for OCI deployment
-
-# TMDB API
-TMDB_API_KEY=your_tmdb_api_key_here # Your TMDB API key (get from themoviedb.org)
-
-# OCI Configuration
-OCI_USER_OCID=ocid1.user.oc1..example                  # Your OCI user OCID
-OCI_FINGERPRINT=00:00:00:00:00:00:00:00:00:00:00:00    # Your OCI API key fingerprint
-OCI_TENANCY_OCID=ocid1.tenancy.oc1..example            # Your OCI tenancy OCID
-OCI_REGION=ca-toronto-1                                # Your OCI region
-OCI_KEY_FILE=/path/to/your/key.pem                     # Path to your OCI private key file
-
-# Email Configuration (for user verification and password reset)
-FROM_EMAIL=noreply@example.com              # Email address to send from
-SENDGRID_API_KEY=your_sendgrid_api_key_here # SendGrid API key for email delivery
-
-# Development options
-USE_MOCK_DATA=false                # Set to 'true' to use mock data instead of a real database
-```
+This document provides instructions for setting up your environment variables for the FilmVault application.
 
 ## Client Environment Variables
 
-Create a `.env` file in the client directory with the following variables:
+Create a `.env` file in the `client` directory with the following variables:
 
 ```
-REACT_APP_API_URL=http://localhost:5001  # The URL of the server API
+REACT_APP_API_URL=http://localhost:3000
 ```
 
-## Generating Secure Secret Keys
+## Server Environment Variables
 
-For the JWT_SECRET, you should generate a secure random string. Here's how to do it:
+Create a `.env` file in the `server` directory with the following variables:
 
-### Using Node.js
-
-```javascript
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+### Basic Configuration
+```
+PORT=3000
+CLIENT_URL=http://localhost:3000
 ```
 
-### Using OpenSSL
-
-```bash
-openssl rand -hex 32
+### JWT Authentication
+```
+JWT_SECRET=your_secure_random_string
 ```
 
-## Getting a TMDB API Key
+To generate a secure random string for JWT_SECRET, you can run this command:
+```
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
 
-1. Create an account at [https://www.themoviedb.org](https://www.themoviedb.org)
-2. Go to your account settings
-3. Click on "API" in the left sidebar
-4. Follow the instructions to request an API key
-5. Copy the API key (v3 auth) to your `.env` file
+### Database Configuration
+```
+DB_HOST=localhost
+DB_USER=your_database_username
+DB_PASSWORD=your_database_password
+DB_NAME=myfavmovies
+DB_NLB_IP=
+```
 
-## OCI Configuration
+### TMDB API
+```
+TMDB_API_KEY=your_tmdb_api_key_here
+```
+Get your TMDB API key by signing up at [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
 
-If you're using Oracle Cloud Infrastructure (OCI), you'll need to:
+### Oracle Cloud Infrastructure (Optional for OCI deployment)
+```
+OCI_USER_OCID=ocid1.user.oc1..example
+OCI_FINGERPRINT=00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+OCI_TENANCY_OCID=ocid1.tenancy.oc1..example
+OCI_REGION=ca-toronto-1
+OCI_KEY_FILE=/path/to/your/key.pem
+```
 
-1. Create an API key pair
-2. Upload the public key to your OCI account
-3. Note down the fingerprint, user OCID, and tenancy OCID
-4. Store the private key file securely
-5. Add these values to your `.env` file
-6. Run the setup script to generate the OCI config file:
+### Email Configuration (SendGrid)
+```
+FROM_EMAIL=your_sender_email@example.com
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+```
+
+#### Setting Up SendGrid for Email Functionality
+
+1. Sign up for a SendGrid account at [https://sendgrid.com/](https://sendgrid.com/)
+2. Create an API key from the SendGrid dashboard:
+   - Go to Settings > API Keys
+   - Click "Create API Key"
+   - Give it a name like "FilmVault API"
+   - Select "Full Access" or customize permissions as needed
+   - Copy the generated API key
+
+3. Verify your sender identity:
+   - Go to Settings > Sender Authentication
+   - Follow the instructions to verify a single sender or domain
+
+4. Add the API key to your `.env` file:
+   ```
+   SENDGRID_API_KEY=your_api_key_here
+   FROM_EMAIL=your_verified_email@example.com
+   ```
+
+### Development Options
+```
+USE_MOCK_DATA=false
+TEST_EMAIL=your_test_email@example.com
+```
+
+## Testing Email Functionality
+
+After setting up your environment variables, you can test the email functionality using:
 
 ```bash
 cd server
-npm run generate-oci-config
+npx ts-node test-email.ts
 ```
 
-This will create an `oci_config` file using the values from your environment variables.
+This will send test verification and password reset emails to the email address specified in the TEST_EMAIL environment variable.
 
-See the Oracle Cloud documentation for more details on generating API keys.
+## Notes for Development
 
-## Development vs Production
-
-In production environments:
-
-1. Ensure all secrets are properly secured
-2. Use environment-specific `.env` files
-3. For React, use `.env.production` for production builds
-4. Never commit `.env` files to version control
-5. Consider using a secrets management service for production deployments
-
-## Troubleshooting
-
-If you encounter connection issues:
-
-1. Verify all environment variables are set correctly
-2. Check database connectivity
-3. Ensure your TMDB API key is valid
-4. Check the server logs for specific error messages
+- In development, if no SendGrid API key is provided, the application will fall back to displaying verification tokens in the API response
+- For production, always ensure that SENDGRID_API_KEY is properly configured to enable actual email sending

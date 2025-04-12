@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import MovieCard from '../components/MovieCard';
@@ -24,6 +24,7 @@ interface Movie {
   PosterPath: string;
   Overview: string;
   Rating?: number;
+  ReleaseDate?: string;
 }
 
 const UserProfile = () => {
@@ -34,6 +35,16 @@ const UserProfile = () => {
   const [userMovies, setUserMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<'rating' | 'title'>('rating');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    // Reset any pagination state if needed
+  }, [searchQuery]);
 
   // Check if the user is viewing their own profile
   useEffect(() => {
@@ -43,22 +54,101 @@ const UserProfile = () => {
       return;
     }
   }, [id, currentUser, navigate]);
+  
+  // Sort function for movies
+  const sortMovies = (movies: Movie[]) => {
+    const sortedMovies = [...movies];
+    const isAscending = sortDirection === 'asc';
+    
+    // Helper function to flip sort direction if descending
+    const directionMultiplier = isAscending ? 1 : -1;
+    
+    switch (sortField) {
+      case 'rating':
+        return sortedMovies.sort((a, b) => {
+          const ratingA = a.Rating || 0;
+          const ratingB = b.Rating || 0;
+          return (ratingA - ratingB) * directionMultiplier;
+        });
+        
+      case 'title':
+        return sortedMovies.sort((a, b) => {
+          const result = a.Title.localeCompare(b.Title);
+          return result * directionMultiplier;
+        });
+        
+      default:
+        return sortedMovies;
+    }
+  };
+  
+  // Toggle sort direction
+  const toggleSortDirection = () => {
+    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  // Handle sort field change
+  const handleSortFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortField(e.target.value as 'rating' | 'title');
+  };
+  
+  // Filtered and sorted movies - moved to top level to satisfy React Hooks rules
+  const filteredMovies = useMemo(() => {
+    // First filter by search query
+    const filtered = searchQuery 
+      ? userMovies.filter(movie => movie.Title.toLowerCase().includes(searchQuery.toLowerCase()))
+      : userMovies;
+    
+    // Then sort
+    return sortMovies(filtered);
+  }, [userMovies, searchQuery, sortField, sortDirection]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       setLoading(true);
+      setError(''); // Clear previous errors
+      
       try {
         // Skip fetching if it's the current user's profile (we'll redirect instead)
         if (currentUser && id && parseInt(id) === currentUser.id) {
           return;
         }
         
+        // Log the API URL for debugging
+        console.log(`Fetching user profile from: ${API_URL}/api/users/profile/${id}`);
+        
         const response = await axios.get(`${API_URL}/api/users/profile/${id}`);
+        console.log('API response:', response.data);
+        
+        if (!response.data.user) {
+          throw new Error('User data not found in response');
+        }
+        
         setUser(response.data.user);
-        setUserMovies(response.data.movies);
-      } catch (err) {
+        
+        // Ensure movies data exists and is an array
+        if (response.data.movies && Array.isArray(response.data.movies)) {
+          console.log('Received user movies:', response.data.movies.length);
+          setUserMovies(response.data.movies);
+        } else {
+          console.warn('No movies data in response or invalid format');
+          setUserMovies([]);
+        }
+      } catch (err: any) {
         console.error('Error fetching user profile:', err);
-        setError('Failed to load user profile. The user may not exist.');
+        
+        // More detailed error message based on the error type
+        if (err.response) {
+          // The request was made but the server responded with an error status
+          setError(`Server error: ${err.response.status} - ${err.response.data?.message || 'Failed to load user profile'}`);
+          console.error('Response data:', err.response.data);
+        } else if (err.request) {
+          // The request was made but no response was received
+          setError('No response received from server. Please check your connection.');
+        } else {
+          // Something else went wrong
+          setError(`Failed to load user profile: ${err.message}`);
+        }
       } finally {
         setLoading(false);
       }
@@ -79,13 +169,31 @@ const UserProfile = () => {
     );
   }
 
+  // The useMemo has been moved to the top level of the component
+  
   if (error || !user) {
     return (
       <div className="container">
-        <div style={{ marginTop: '150px', textAlign: 'center' }}>
-          <h2>Error</h2>
-          <p>{error}</p>
-          <button onClick={() => navigate('/')}>Back to Home</button>
+        <div style={{ 
+          marginTop: '150px', 
+          textAlign: 'center',
+          padding: '30px',
+          backgroundColor: 'var(--nav-background)',
+          borderRadius: '10px',
+          maxWidth: '600px',
+          margin: '150px auto 0'
+        }}>
+          <h2 style={{ color: 'var(--primary-color)', marginBottom: '20px' }}>Problem Loading Profile</h2>
+          <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>{error || 'User profile could not be loaded. The user may not exist or there might be a server connection issue.'}</p>
+          <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'center', gap: '20px' }}>
+            <button 
+              onClick={() => window.location.reload()} 
+              style={{ backgroundColor: 'var(--primary-color)', color: 'black' }}
+            >
+              Try Again
+            </button>
+            <button onClick={() => navigate('/')}>Back to Home</button>
+          </div>
         </div>
       </div>
     );
@@ -220,20 +328,287 @@ const UserProfile = () => {
         </div>
       </div>
 
-      <h3 style={{ marginBottom: '15px' }}>{user.Usernames}'s Movies</h3>
+      <div>
+        <h3 style={{ 
+          marginBottom: '20px', 
+          borderBottom: '3px solid var(--primary-color)', 
+          paddingBottom: '10px', 
+          display: 'inline-block' 
+        }}>
+          {user.Usernames}'s Movies <span style={{ color: 'var(--primary-color)', fontSize: '0.8em' }}>({userMovies.length})</span>
+        </h3>
 
-      {userMovies.length > 0 ? (
-        <div className="movie-grid">
-          {userMovies.map(movie => (
-            <MovieCard 
-              key={movie.MovieID} 
-              movie={movie} 
-            />
-          ))}
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap',
+          justifyContent: 'space-between', 
+          alignItems: 'flex-end',
+          marginTop: '30px', 
+          marginBottom: '30px',
+          gap: '20px'
+        }}>
+          {/* Search filter */}
+          <div style={{ 
+            position: 'relative', 
+            flexGrow: 1, 
+            maxWidth: '500px',
+            minWidth: '250px'
+          }}>
+            <form onSubmit={(e) => e.preventDefault()}>
+              <input
+                type="text"
+                placeholder={`Search ${user.Usernames}'s movies...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 12px 12px 40px',
+                  borderRadius: '20px',
+                  border: '1px solid var(--primary-color)',
+                  backgroundColor: 'var(--nav-background)',
+                  color: 'var(--text-color)',
+                  fontSize: '16px',
+                  height: '45px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <span style={{ 
+                position: 'absolute', 
+                left: '15px', 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                color: 'var(--primary-color)',
+                fontSize: '18px'
+              }}>
+                🔍
+              </span>
+            </form>
+          </div>
+          
+          {/* Sort controls */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: '15px'
+          }}>
+            {/* Sort field label and controls */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
+              <label htmlFor="sort-field" style={{ 
+                color: 'var(--text-color)', 
+                fontSize: '16px',
+                marginBottom: '10px'
+              }}>
+                Sort by:
+              </label>
+              
+              {/* Dropdown */}
+              <select
+                id="sort-field"
+                value={sortField}
+                onChange={handleSortFieldChange}
+                style={{
+                  padding: '10px 20px 10px 15px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--primary-color)',
+                  backgroundColor: 'var(--nav-background)',
+                  color: 'var(--text-color)',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  height: '45px',
+                  boxSizing: 'border-box',
+                  minWidth: '120px'
+                }}
+              >
+                <option value="rating">Rating</option>
+                <option value="title">Title</option>
+              </select>
+              
+              {/* Sort direction toggle button */}
+              <button
+                onClick={toggleSortDirection}
+                title={sortDirection === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
+                style={{
+                  backgroundColor: 'var(--nav-background)',
+                  border: '1px solid var(--primary-color)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--primary-color)',
+                  fontSize: '16px',
+                  width: '45px',
+                  height: '45px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 16 16" 
+                  fill="none" 
+                  style={{ transform: sortDirection === 'desc' ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s ease' }}
+                >
+                  <path 
+                    d="M8 3L14 10H2L8 3Z" 
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <p>This user hasn't added any movies yet.</p>
-      )}
+
+        {/* Movie count display */}
+        {userMovies.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '16px', color: 'var(--text-color)', opacity: '0.8' }}>
+              {filteredMovies.length > 0 
+                ? searchQuery 
+                  ? `Found ${filteredMovies.length} movies matching "${searchQuery}"`
+                  : `Showing ${filteredMovies.length} of ${userMovies.length} movies`
+                : `No movies found matching "${searchQuery}"`
+              }
+            </p>
+          </div>
+        )}
+
+        {userMovies.length > 0 ? (
+          filteredMovies.length > 0 ? (
+            <div className="horizontal-slider" style={{
+              marginTop: '20px',
+              paddingBottom: '20px'
+            }}>
+              {filteredMovies.map(movie => (
+                <div 
+                  key={movie.MovieID} 
+                  style={{ 
+                    width: '170px',
+                    marginRight: '30px',
+                    transition: 'transform 0.2s ease',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    backgroundColor: '#2a2a2a',
+                    padding: '0 0 10px 0', 
+                    height: '330px',
+                    position: 'relative',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => navigate(`/movie/${movie.MovieID}`)}
+                >
+                  <div style={{ position: 'relative', width: '170px', height: '255px' }}>
+                    {movie.PosterPath ? (
+                      <img 
+                        src={`https://image.tmdb.org/t/p/w500${movie.PosterPath}`}
+                        alt={movie.Title} 
+                        style={{
+                          width: '170px',
+                          height: '255px',
+                          borderRadius: '10px 10px 0 0',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '170px',
+                        height: '255px',
+                        backgroundColor: '#3F3F3F',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        borderRadius: '10px 10px 0 0',
+                        opacity: '0.8'
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🎬</span>
+                          No image<br />available
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Rating badge */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                      color: 'white',
+                      borderRadius: '5px',
+                      padding: '4px 8px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      zIndex: 2
+                    }}>
+                      {movie.Rating ? `${movie.Rating * 20}/100` : 'Not yet rated'}
+                    </div>
+                  </div>
+                  
+                  {/* Movie title */}
+                  <div style={{ padding: '10px 8px 0 8px' }}>
+                    <h3 style={{
+                      fontSize: '16px',
+                      fontWeight: 500,
+                      color: '#FFFFFF',
+                      textAlign: 'center',
+                      margin: '0',
+                      maxHeight: '44px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {movie.Title}
+                    </h3>
+                    
+                    {/* Rating stars under title */}
+                    <div style={{ 
+                      marginTop: '6px', 
+                      textAlign: 'center',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      {movie.Rating ? (
+                        <div style={{ color: 'gold', fontSize: '14px' }}>
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} style={{ marginRight: '2px' }}>
+                              {i < (movie.Rating || 0) ? '★' : '☆'}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '14px' }}>
+                          Not yet rated
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', marginTop: '50px' }}>
+              <p>No movies found matching "{searchQuery}". Try a different search term.</p>
+            </div>
+          )
+        ) : (
+        <div style={{ 
+          padding: '30px', 
+          textAlign: 'center', 
+          background: 'var(--nav-background)', 
+          borderRadius: '10px',
+          margin: '30px 0',
+          opacity: 0.8
+        }}>
+          <span style={{ fontSize: '32px', display: 'block', marginBottom: '15px' }}>🎬</span>
+          <p>{user.Usernames} hasn't added any movies to their collection yet.</p>
+        </div>
+        )}
+      </div>
     </div>
   );
 };

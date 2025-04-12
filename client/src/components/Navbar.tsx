@@ -27,7 +27,10 @@ const Navbar = () => {
             </div>
           </div>
         ) : (
-          <Link to="/login" className="login-link">Sign In</Link>
+          <Link to="/login" className="login-button">
+            <span className="login-icon">👤</span>
+            <span className="login-text">Sign In</span>
+          </Link>
         )}
       </div>
     </nav>

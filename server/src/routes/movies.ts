@@ -34,6 +34,29 @@ const mapTMDBMovie = (movie: any) => {
   };
 };
 
+// Test TMDB API connection
+router.get('/test-connection', async (req, res) => {
+  try {
+    // Check if API key is available
+    if (!TMDB_API_KEY) {
+      return res.status(500).json({ 
+        message: 'TMDB API key is not configured on the server',
+        success: false
+      });
+    }
+    
+    // Return success without actually making external API call
+    res.json({
+      message: 'Backend API connection successful',
+      tmdb_configured: true,
+      success: true
+    });
+  } catch (error) {
+    console.error('Error testing API connection:', error);
+    res.status(500).json({ message: 'Server error', success: false });
+  }
+});
+
 // Get top movies from TMDB
 router.get('/top', async (req, res) => {
   try {

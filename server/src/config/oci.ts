@@ -1,16 +1,20 @@
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Check for OCI configuration file
 const ociConfigPath = path.join(__dirname, '../../oci_config');
-const ociKeyPath = '/Users/andywu/Documents/andywu47.pem';
+const ociKeyPath = process.env.OCI_KEY_FILE || '';
 
 // Export OCI configuration for use in other parts of the application
 export const ociConfig = {
   configPath: ociConfigPath,
   keyPath: ociKeyPath,
   profile: 'DEFAULT',
-  region: 'ca-toronto-1',
+  region: process.env.OCI_REGION || 'ca-toronto-1',
   
   // Helper function to check if OCI configuration is valid
   isConfigValid: (): boolean => {

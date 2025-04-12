@@ -62,22 +62,15 @@ const Home = () => {
       navigate('/', { replace: true });
     }
     
-    // Test direct TMDB API call to check if key is working
+    // We should NEVER test TMDB API in the frontend directly
+    // All API requests should go through the backend for security
     const testTMDBAPI = async () => {
       try {
-        console.log('Testing direct TMDB API call...');
-        const tmdbApiKey = '8d577764c95d04282fe610ceecd260c2'; // Same key as in the server
-        const response = await axios.get(`https://api.themoviedb.org/3/movie/popular`, {
-          params: {
-            api_key: tmdbApiKey,
-            language: 'en-US',
-            page: 1
-          }
-        });
-        console.log('Direct TMDB API call successful:', response.status);
-        console.log('First movie:', response.data.results[0]?.title);
+        console.log('Testing backend API connection...');
+        const response = await axios.get(`${API_URL}/api/movies/test-connection`);
+        console.log('Backend API connection successful:', response.status);
       } catch (err) {
-        console.error('Direct TMDB API call failed:', err);
+        console.error('Backend API connection failed:', err);
       }
     };
     

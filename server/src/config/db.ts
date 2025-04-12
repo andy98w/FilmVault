@@ -4,21 +4,21 @@ import fs from 'fs';
 
 dotenv.config();
 
-// OCI Configuration
+// OCI Configuration from environment variables
 const ociConfig = {
-  user: 'ocid1.user.oc1..aaaaaaaa5zii5jopnr66gd5i3reki4banjn66ery4uanf6eujxqzj64o4peq',
-  fingerprint: '51:97:01:df:99:0f:e8:36:57:ab:ab:9b:cb:8f:30:78',
-  tenancy: 'ocid1.tenancy.oc1..aaaaaaaaywmo3jk7mqebx7aahzj4wyntuoqldc7txwr3bhosj6ta6isgtlca',
-  region: 'ca-toronto-1',
-  key_file: '/Users/andywu/Documents/andywu47.pem',
+  user: process.env.OCI_USER_OCID || '',
+  fingerprint: process.env.OCI_FINGERPRINT || '',
+  tenancy: process.env.OCI_TENANCY_OCID || '',
+  region: process.env.OCI_REGION || 'ca-toronto-1',
+  key_file: process.env.OCI_KEY_FILE || '',
 };
 
 // Log database configuration
 console.log('OCI Database Configuration:');
 console.log(`  Region: ${ociConfig.region}`);
-console.log(`  Host: ${process.env.DB_HOST || '40.233.72.63'}`);
-console.log(`  User: ${process.env.DB_USER || 'admin'}`);
-console.log(`  Database: ${process.env.DB_NAME || 'myfavmovies'}`);
+console.log(`  Host: ${process.env.DB_HOST}`);
+console.log(`  User: ${process.env.DB_USER}`);
+console.log(`  Database: ${process.env.DB_NAME}`);
 
 // Check if we're using mock data (automatically use mock if env var is set or connection fails)
 let useMockData = process.env.USE_MOCK_DATA === 'true';
@@ -94,10 +94,10 @@ try {
   
   // Create connection pool
   pool = mysql.createPool({
-    host: process.env.DB_HOST || process.env.DB_NLB_IP || '40.233.72.63', // NLB public IP from Terraform output
-    user: process.env.DB_USER || 'admin',
+    host: process.env.DB_HOST || process.env.DB_NLB_IP || 'localhost',
+    user: process.env.DB_USER || '',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'myfavmovies',
+    database: process.env.DB_NAME || '',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

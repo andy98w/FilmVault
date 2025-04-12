@@ -1,7 +1,11 @@
 const axios = require('axios');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
 
 // TMDB Configuration
-const TMDB_API_KEY = '8d577764c95d04282fe610ceecd260c2';
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
 
 async function testTMDB() {

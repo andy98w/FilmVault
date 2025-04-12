@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+import path from 'path';
 import pool from './config/db';
 import authRoutes from './routes/auth';
 import movieRoutes from './routes/movies';
@@ -17,11 +19,22 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow all origins
+  origin: true, // Allow requests from any origin to fix TMDB API issues
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Allow cookies to be sent with requests
 }));
 app.use(express.json());
+app.use(cookieParser()); // Parse cookies
+
+// Serve profile pictures statically for local development
+app.use('/profile-pictures', express.static(path.join(__dirname, '../profile-pictures')));
+
+// Log middleware configuration
+console.log('CORS configuration:', {
+  origin: true,
+  credentials: true
+});
 
 // Database initialization function
 async function initializeDatabase() {

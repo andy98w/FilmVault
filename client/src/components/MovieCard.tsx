@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { API_URL } from '../config/config';
 
 interface Movie {
   MovieID: number;
@@ -63,9 +62,7 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
         poster_path: movie.PosterPath,
         overview: movie.Overview
       }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+        withCredentials: true
       });
       setMessage('Movie added to your list!');
     } catch (error: any) {

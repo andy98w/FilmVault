@@ -109,12 +109,48 @@ a:hover, a:visited, a:link, a:active {
   padding-bottom: 10px;
 }
 
+.profile-pic-container {
+  position: relative;
+  margin-right: 0;
+}
+
 .profile-pic-large {
   width: 80px;
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--primary-color);
+}
+
+.profile-pic-actions {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  gap: 5px;
+}
+
+.profile-pic-edit-button,
+.profile-pic-save-button {
+  background-color: var(--nav-background);
+  border: 1px solid var(--primary-color);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+.profile-pic-edit-button:hover,
+.profile-pic-save-button:hover {
+  background-color: var(--primary-color);
+  color: var(--background-dark);
 }
 
 .profile-username {

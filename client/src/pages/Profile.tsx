@@ -2,8 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { API_URL } from '../config/config';
 
 interface ExtendedUser {
   id: number;
@@ -24,6 +23,11 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  
+  // Profile picture state
+  const [profilePic, setProfilePic] = useState<string | undefined>(user?.profilePic);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   // User profile state
   const [biography, setBiography] = useState('');
@@ -47,12 +51,11 @@ const Profile = () => {
       setLoading(true);
       try {
         const response = await axios.get(`${API_URL}/api/users/me`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
+          withCredentials: true
         });
         
         // Set state from response
+        setProfilePic(response.data.ProfilePic);
         setBiography(response.data.Biography || '');
         setFacebookLink(response.data.FacebookLink || '');
         setInstagramLink(response.data.InstagramLink || '');
@@ -69,6 +72,84 @@ const Profile = () => {
 
     fetchUserProfile();
   }, []);
+  
+  // Handle profile picture file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image is too large. Maximum size is 5MB.');
+        return;
+      }
+      
+      // Check file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setError('Invalid file type. Only JPEG, PNG, GIF and WebP images are allowed.');
+        return;
+      }
+      
+      setSelectedFile(file);
+      
+      // Create a preview URL for immediate feedback
+      const objectUrl = URL.createObjectURL(file);
+      setProfilePic(objectUrl);
+    }
+  };
+  
+  // Handle profile picture upload
+  const handleProfilePictureUpload = async () => {
+    if (!selectedFile) {
+      setError('No file selected');
+      return;
+    }
+    
+    setUploadingPicture(true);
+    setError('');
+    setMessage('');
+    
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('profilePicture', selectedFile);
+      
+      // Upload to server
+      const response = await axios.post(
+        `${API_URL}/api/users/upload-profile-picture`,
+        formData,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      // Update profile picture URL
+      setProfilePic(response.data.profilePicUrl);
+      setMessage('Profile picture updated successfully');
+      
+      // Clear selected file as it's been uploaded
+      setSelectedFile(null);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
+    } catch (err: any) {
+      console.error('Error uploading profile picture:', err);
+      setError(err.response?.data?.message || 'Failed to upload profile picture');
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
 
   // Handle profile update
   const handleProfileUpdate = async (e: FormEvent) => {
@@ -90,9 +171,7 @@ const Profile = () => {
           linkedin_link: linkedinLink
         },
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
+          withCredentials: true
         }
       );
       
@@ -145,9 +224,7 @@ const Profile = () => {
           new_password: newPassword
         },
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
+          withCredentials: true
         }
       );
       
@@ -186,11 +263,43 @@ const Profile = () => {
   return (
     <div className="container" style={{ marginBottom: '80px' }}>
       <div className="profile-header">
-        <img 
-          src={user?.profilePic || '/default.jpg'} 
-          alt={user?.username || 'Profile'} 
-          className="profile-pic-large" 
-        />
+        <div className="profile-pic-container">
+          <img 
+            src={profilePic || '/default.jpg'} 
+            alt={user?.username || 'Profile'} 
+            className="profile-pic-large" 
+          />
+          
+          {/* Profile picture upload controls */}
+          <div className="profile-pic-actions">
+            <input
+              type="file"
+              id="profile-picture-upload"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+            <label 
+              htmlFor="profile-picture-upload"
+              className="profile-pic-edit-button"
+              title="Change profile picture"
+            >
+              📷
+            </label>
+            
+            {selectedFile && (
+              <button
+                onClick={handleProfilePictureUpload}
+                disabled={uploadingPicture}
+                className="profile-pic-save-button"
+                title="Save profile picture"
+              >
+                {uploadingPicture ? '⏳' : '💾'}
+              </button>
+            )}
+          </div>
+        </div>
+        
         <div>
           <h1 className="profile-username">{user?.username}</h1>
           <p style={{ color: 'var(--primary-color)', opacity: 0.9, margin: '0' }}>{user?.email}</p>

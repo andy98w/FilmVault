@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../api/config';
 
-// API base URL
+// API base URL for backward compatibility
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 interface User {
@@ -43,23 +43,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchUserData(token);
-    } else {
-      setLoading(false);
-    }
+    // Try to get user data using the cookie first
+    const checkAuthentication = async () => {
+      try {
+        // First check if we have a cookie session
+        await fetchUserData();
+      } catch (err) {
+        // If cookie auth fails, try localStorage token as fallback
+        const token = localStorage.getItem('token');
+        if (token) {
+          await fetchUserData(token);
+        } else {
+          setLoading(false);
+        }
+      }
+    };
+    
+    checkAuthentication();
   }, []);
 
-  const fetchUserData = async (token: string) => {
+  const fetchUserData = async (token?: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      // Use the API instance which already has withCredentials configured
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const response = await api.get('/api/users/me', { headers });
       
       setUser({
         id: response.data.id,
@@ -80,7 +88,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+      const response = await api.post('/api/auth/login', { email, password });
+      
+      // Still store token in localStorage for backward compatibility
       localStorage.setItem('token', response.data.token);
       
       // User data from login includes isAdmin flag
@@ -100,7 +110,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}/api/auth/register`, { username, email, password });
+      await api.post('/api/auth/register', { username, email, password });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register');
       throw err;
@@ -109,9 +119,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      // Call the server logout endpoint to clear the cookie
+      await api.post('/api/auth/logout');
+      
+      // For backward compatibility, also remove from localStorage
+      localStorage.removeItem('token');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear local state even if server call fails
+      localStorage.removeItem('token');
+      setUser(null);
+    }
   };
 
   const value = {

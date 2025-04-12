@@ -1,7 +1,5 @@
 import axios from 'axios';
-
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { API_URL } from '../config/config';
 
 /**
  * Admin API service for managing users and system settings
@@ -10,15 +8,12 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 export const adminApi = {
   /**
    * Get all users in the system
-   * @param token JWT token with admin privileges
    * @returns List of all users
    */
-  getAllUsers: async (token: string) => {
+  getAllUsers: async () => {
     try {
       const response = await axios.get(`${API_URL}/api/admin/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        withCredentials: true
       });
       return response.data;
     } catch (error: any) {
@@ -29,16 +24,13 @@ export const adminApi = {
 
   /**
    * Delete a user from the system
-   * @param token JWT token with admin privileges
    * @param userId ID of the user to delete
    * @returns Confirmation message and deleted user info
    */
-  deleteUser: async (token: string, userId: number) => {
+  deleteUser: async (userId: number) => {
     try {
       const response = await axios.delete(`${API_URL}/api/admin/users/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        withCredentials: true
       });
       return response.data;
     } catch (error: any) {
@@ -49,16 +41,13 @@ export const adminApi = {
   
   /**
    * Make a user an admin
-   * @param token JWT token with admin privileges
    * @param userId ID of the user to make admin
    * @returns Confirmation message and updated user info
    */
-  makeUserAdmin: async (token: string, userId: number) => {
+  makeUserAdmin: async (userId: number) => {
     try {
       const response = await axios.post(`${API_URL}/api/admin/users/${userId}/make-admin`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        withCredentials: true
       });
       return response.data;
     } catch (error: any) {
@@ -69,16 +58,13 @@ export const adminApi = {
   
   /**
    * Remove admin privileges from a user
-   * @param token JWT token with admin privileges
    * @param userId ID of the user to remove admin privileges from
    * @returns Confirmation message and updated user info
    */
-  removeAdminPrivileges: async (token: string, userId: number) => {
+  removeAdminPrivileges: async (userId: number) => {
     try {
       const response = await axios.post(`${API_URL}/api/admin/users/${userId}/remove-admin`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        withCredentials: true
       });
       return response.data;
     } catch (error: any) {

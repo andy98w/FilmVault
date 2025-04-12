@@ -5,8 +5,7 @@ import MovieListItem from '../components/MovieListItem';
 import Pagination from '../components/Pagination';
 import { ToastContainer, useToast } from '../components/Toast';
 
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { API_URL } from '../config/config';
 
 interface Movie {
   MovieID: number;
@@ -48,9 +47,7 @@ const MyMovies = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/api/movies/user/list`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+        withCredentials: true
       });
       
       // Create a Map to filter out duplicates by MovieID

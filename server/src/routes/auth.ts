@@ -326,8 +326,17 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
+    // Set JWT token in HttpOnly cookie (more secure than localStorage)
+    res.cookie('auth_token', token, {
+      httpOnly: true, // Can't be accessed by JavaScript
+      secure: process.env.NODE_ENV === 'production', // Only sent over HTTPS in production
+      sameSite: 'strict', // Prevents CSRF attacks
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+    });
+    
+    // Also return token in response for backward compatibility
     res.json({
-      token,
+      token, // For backward compatibility with existing clients
       user: {
         id: user.id,
         username: user.Usernames,
@@ -585,6 +594,18 @@ router.post('/reset-password', async (req, res) => {
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// Logout
+router.post('/logout', async (req, res) => {
+  // Clear the auth cookie
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  
+  res.json({ message: 'Logged out successfully' });
 });
 
 export default router;

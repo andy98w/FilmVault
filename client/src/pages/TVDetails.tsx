@@ -4,8 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { getRatingColorClass } from '../components/MovieCard';
 
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+import { API_URL } from '../config/config';
 
 interface CastMember {
   id: number;
@@ -58,9 +57,7 @@ const TVDetails = () => {
         if (isAuthenticated) {
           try {
             const userMoviesResponse = await axios.get(`${API_URL}/api/movies/user/list`, {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`
-              }
+              withCredentials: true
             });
             
             // Check if this show is in user's list
@@ -94,9 +91,7 @@ const TVDetails = () => {
         poster_path: show.PosterPath,
         overview: show.Overview
       }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+        withCredentials: true
       });
       
       setMessage('TV show added to your list!');
@@ -121,9 +116,7 @@ const TVDetails = () => {
     
     try {
       await axios.delete(`${API_URL}/api/movies/remove/${show.MovieID}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+        withCredentials: true
       });
       
       setMessage('TV show removed from your list');

@@ -1,8 +1,41 @@
 import express from 'express';
 import pool from '../config/db';
 import { authenticateToken } from '../middleware/auth';
+import multer from 'multer';
+import path from 'path';
+import storageService from '../services/storage.service';
+
+// Add custom Request type with file property for multer
+interface MulterRequest extends express.Request {
+  file?: Express.Multer.File;
+}
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+  fileFilter: (
+    req: Express.Request, 
+    file: Express.Multer.File, 
+    cb: multer.FileFilterCallback
+  ) => {
+    // Check file type
+    const filetypes = /jpeg|jpg|png|gif|webp/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Error: Images Only! (jpeg, jpg, png, gif, webp)'));
+    }
+  }
+});
 
 // Get top users by contributions
 router.get('/top', async (req, res) => {
@@ -283,6 +316,75 @@ router.post('/change-password', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error changing password:', error);
     if (error instanceof Error) {
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload profile picture (requires authentication)
+router.post('/upload-profile-picture', authenticateToken, upload.single('profilePicture'), async (req: MulterRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    
+    console.log(`Uploading profile picture for user ${userId}...`);
+    
+    try {
+      // Upload to Object Storage
+      const pictureUrl = await storageService.uploadProfilePicture(
+        userId,
+        req.file.buffer,
+        req.file.originalname
+      );
+      
+      // Get user's current profile picture URL
+      const [users] = await pool.query(
+        'SELECT ProfilePic FROM users WHERE id = ?',
+        [userId]
+      );
+      
+      const user = (users as any[])[0];
+      const currentProfilePic = user.ProfilePic;
+      
+      // Update user's profile picture in database
+      await pool.query(
+        'UPDATE users SET ProfilePic = ? WHERE id = ?',
+        [pictureUrl, userId]
+      );
+      
+      // If user had a previous profile picture in OCI, delete it
+      if (currentProfilePic && 
+          (currentProfilePic.includes('objectstorage') || 
+           currentProfilePic.includes(storageService.getBucketName()))) {
+        try {
+          await storageService.deleteProfilePicture(currentProfilePic);
+        } catch (deleteError) {
+          console.error('Error deleting old profile picture, continuing anyway:', deleteError);
+        }
+      }
+      
+      res.json({ 
+        message: 'Profile picture uploaded successfully',
+        profilePicUrl: pictureUrl
+      });
+    } catch (storageError) {
+      console.error('Error with object storage:', storageError);
+      return res.status(500).json({ message: 'Failed to upload profile picture to storage' });
+    }
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    if (error instanceof Error) {
+      if (error.message.includes('Images Only')) {
+        return res.status(400).json({ message: error.message });
+      }
       return res.status(500).json({ message: 'Server error', error: error.message });
     }
     res.status(500).json({ message: 'Server error' });

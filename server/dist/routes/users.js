@@ -268,46 +268,35 @@ router.post('/upload-profile-picture', auth_1.authenticateToken, upload.single('
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
-        console.log(`Uploading profile picture for user ${userId}...`);
-        try {
-            // Upload to Object Storage
-            const pictureUrl = yield storage_service_1.default.uploadProfilePicture(userId, req.file.buffer, req.file.originalname);
-            // Get user's current profile picture URL
-            const [users] = yield db_1.default.query('SELECT ProfilePic FROM users WHERE id = ?', [userId]);
-            const user = users[0];
-            const currentProfilePic = user.ProfilePic;
-            // Update user's profile picture in database
-            yield db_1.default.query('UPDATE users SET ProfilePic = ? WHERE id = ?', [pictureUrl, userId]);
-            // If user had a previous profile picture in OCI, delete it
-            if (currentProfilePic &&
-                (currentProfilePic.includes('objectstorage') ||
-                    currentProfilePic.includes(storage_service_1.default.getBucketName()))) {
-                try {
-                    yield storage_service_1.default.deleteProfilePicture(currentProfilePic);
-                }
-                catch (deleteError) {
-                    console.error('Error deleting old profile picture, continuing anyway:', deleteError);
-                }
+        const pictureUrl = yield storage_service_1.default.uploadProfilePicture(userId, req.file.buffer, req.file.originalname);
+        // Get user's current profile picture URL
+        const [users] = yield db_1.default.query('SELECT ProfilePic FROM users WHERE id = ?', [userId]);
+        const user = users[0];
+        const currentProfilePic = user.ProfilePic;
+        // Update user's profile picture in database
+        yield db_1.default.query('UPDATE users SET ProfilePic = ? WHERE id = ?', [pictureUrl, userId]);
+        // Delete previous profile picture if it exists
+        if (currentProfilePic &&
+            (currentProfilePic.includes('objectstorage') ||
+                currentProfilePic.includes(storage_service_1.default.getBucketName()))) {
+            try {
+                yield storage_service_1.default.deleteProfilePicture(currentProfilePic);
             }
-            res.json({
-                message: 'Profile picture uploaded successfully',
-                profilePicUrl: pictureUrl
-            });
+            catch (deleteError) {
+                console.error('Error deleting old profile picture:', deleteError);
+            }
         }
-        catch (storageError) {
-            console.error('Error with object storage:', storageError);
-            return res.status(500).json({ message: 'Failed to upload profile picture to storage' });
-        }
+        res.json({
+            message: 'Profile picture uploaded successfully',
+            profilePicUrl: pictureUrl
+        });
     }
     catch (error) {
-        console.error('Error uploading profile picture:', error);
-        if (error instanceof Error) {
-            if (error.message.includes('Images Only')) {
-                return res.status(400).json({ message: error.message });
-            }
-            return res.status(500).json({ message: 'Server error', error: error.message });
+        if (error instanceof Error && error.message.includes('Images Only')) {
+            return res.status(400).json({ message: error.message });
         }
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error uploading profile picture:', error);
+        res.status(500).json({ message: 'Failed to upload profile picture' });
     }
 }));
 // Remove profile picture
@@ -325,18 +314,14 @@ router.delete('/remove-profile-picture', auth_1.authenticateToken, (req, res) =>
         if (currentProfilePic && !currentProfilePic.includes('default.jpg')) {
             try {
                 yield storage_service_1.default.deleteProfilePicture(currentProfilePic);
-                console.log(`Deleted profile picture: ${currentProfilePic}`);
             }
             catch (deleteError) {
                 console.error('Error deleting profile picture:', deleteError);
-                // Continue with the process even if deletion fails
             }
         }
         // Update user's record to remove the profile picture reference
         yield db_1.default.query('UPDATE users SET ProfilePic = NULL WHERE id = ?', [userId]);
-        res.json({
-            message: 'Profile picture removed successfully'
-        });
+        res.json({ message: 'Profile picture removed successfully' });
     }
     catch (error) {
         console.error('Error removing profile picture:', error);

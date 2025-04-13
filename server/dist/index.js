@@ -44,6 +44,9 @@ app.use((0, cors_1.default)({
     exposedHeaders: ['Set-Cookie'],
     credentials: true // Allow cookies to be sent with requests
 }));
+// Log CORS settings in detail
+console.log('CORS credentials setting:', true);
+console.log('CORS origin setting:', process.env.CLIENT_URL || 'http://132.145.111.110');
 // Log CORS configuration
 console.log('CORS configured with origin:', process.env.CLIENT_URL || 'http://132.145.111.110');
 app.use(express_1.default.json());

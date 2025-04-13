@@ -16,28 +16,17 @@ const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("../config/db"));
 const admin_1 = require("../middleware/admin");
 const router = express_1.default.Router();
-/**
- * @route   GET /api/admin/users
- * @desc    Get all users (admin only)
- * @access  Admin
- */
+// Get all users (admin only)
 router.get('/users', admin_1.authenticateAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        console.log('Admin fetching all users...');
         const [rows] = yield db_1.default.query('SELECT id, Usernames, Emails, ProfilePic, email_verified_at, is_admin, created_at FROM users ORDER BY id DESC');
-        console.log(`Found ${rows.length} users`);
         res.json(rows);
     }
     catch (error) {
-        console.error('Error fetching users:', error);
         res.status(500).json({ message: 'Server error' });
     }
 }));
-/**
- * @route   DELETE /api/admin/users/:id
- * @desc    Delete a user (admin only)
- * @access  Admin
- */
+// Delete a user (admin only)
 router.delete('/users/:id', admin_1.authenticateAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -59,14 +48,10 @@ router.delete('/users/:id', admin_1.authenticateAdmin, (req, res) => __awaiter(v
         const connection = yield db_1.default.getConnection();
         try {
             yield connection.beginTransaction();
-            console.log(`Deleting ratings for user ${id}...`);
             yield connection.query('DELETE FROM movie_ratings WHERE user_id = ?', [id]);
-            console.log(`Deleting movies for user ${id}...`);
             yield connection.query('DELETE FROM user_movies WHERE user_id = ?', [id]);
-            console.log(`Deleting user ${id}...`);
             yield connection.query('DELETE FROM users WHERE id = ?', [id]);
             yield connection.commit();
-            console.log(`User ${id} (${user.Usernames}) successfully deleted`);
             res.json({
                 message: `User ${user.Usernames} (ID: ${id}) has been deleted successfully`,
                 deletedUser: {
@@ -78,7 +63,6 @@ router.delete('/users/:id', admin_1.authenticateAdmin, (req, res) => __awaiter(v
         }
         catch (txError) {
             yield connection.rollback();
-            console.error('Transaction error:', txError);
             throw txError;
         }
         finally {
@@ -86,15 +70,10 @@ router.delete('/users/:id', admin_1.authenticateAdmin, (req, res) => __awaiter(v
         }
     }
     catch (error) {
-        console.error('Error deleting user:', error);
         res.status(500).json({ message: 'Server error' });
     }
 }));
-/**
- * @route   POST /api/admin/users/:id/make-admin
- * @desc    Make a user an admin (admin only)
- * @access  Admin
- */
+// Make a user an admin (admin only)
 router.post('/users/:id/make-admin', admin_1.authenticateAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
@@ -106,7 +85,6 @@ router.post('/users/:id/make-admin', admin_1.authenticateAdmin, (req, res) => __
         const user = users[0];
         // Update user to admin status
         yield db_1.default.query('UPDATE users SET is_admin = 1 WHERE id = ?', [id]);
-        console.log(`User ${id} (${user.Usernames}) promoted to admin`);
         res.json({
             message: `User ${user.Usernames} (ID: ${id}) has been promoted to admin`,
             user: {
@@ -117,15 +95,10 @@ router.post('/users/:id/make-admin', admin_1.authenticateAdmin, (req, res) => __
         });
     }
     catch (error) {
-        console.error('Error making user admin:', error);
         res.status(500).json({ message: 'Server error' });
     }
 }));
-/**
- * @route   POST /api/admin/users/:id/remove-admin
- * @desc    Remove admin status from a user (admin only)
- * @access  Admin
- */
+// Remove admin status from a user (admin only)
 router.post('/users/:id/remove-admin', admin_1.authenticateAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -144,7 +117,6 @@ router.post('/users/:id/remove-admin', admin_1.authenticateAdmin, (req, res) => 
         const user = users[0];
         // Update user to remove admin status
         yield db_1.default.query('UPDATE users SET is_admin = 0 WHERE id = ?', [id]);
-        console.log(`Admin privileges removed from user ${id} (${user.Usernames})`);
         res.json({
             message: `Admin privileges removed from user ${user.Usernames} (ID: ${id})`,
             user: {
@@ -155,7 +127,6 @@ router.post('/users/:id/remove-admin', admin_1.authenticateAdmin, (req, res) => 
         });
     }
     catch (error) {
-        console.error('Error removing admin status:', error);
         res.status(500).json({ message: 'Server error' });
     }
 }));

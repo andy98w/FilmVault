@@ -329,14 +329,14 @@ router.post('/login', async (req, res) => {
     // Set JWT token in HttpOnly cookie (more secure than localStorage)
     res.cookie('auth_token', token, {
       httpOnly: true, // Can't be accessed by JavaScript
-      secure: false, // Allow cookies over HTTP in all environments
+      secure: true, // Required for SameSite=None cookies
       sameSite: 'none', // Always allow cross-site for API/client separation
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
       path: '/' // Ensure cookie is available across the entire domain
     });
     
     console.log('Set auth cookie with options:', {
-      secure: false,
+      secure: true,
       sameSite: 'none',
       path: '/'
     });
@@ -595,7 +595,7 @@ router.post('/reset-password', async (req, res) => {
       // Clear auth cookies to invalidate all existing sessions for security
       res.clearCookie('auth_token', {
         httpOnly: true,
-        secure: false,
+        secure: true,
         sameSite: 'none',
         path: '/'
       });
@@ -618,7 +618,7 @@ router.post('/logout', async (req, res) => {
   // Clear the auth cookie
   res.clearCookie('auth_token', {
     httpOnly: true,
-    secure: false,
+    secure: true,
     sameSite: 'none',
     path: '/'
   });

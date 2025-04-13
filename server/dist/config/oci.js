@@ -18,16 +18,10 @@ exports.ociConfig = {
         return false;
     },
     isObjectStorageConfigValid: () => {
-        if (!parUrl) {
-            console.error('OCI_PAR_URL environment variable is not set');
-            return false;
-        }
-        return true;
+        return !!parUrl;
     },
     createObjectStorageClient: () => {
-        console.log('Using PAR for object storage access');
         return null;
     }
 };
-console.log('Using PAR URL for profile pictures: ' + (parUrl ? 'Configured' : 'Not configured'));
 exports.default = exports.ociConfig;

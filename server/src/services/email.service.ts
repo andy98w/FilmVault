@@ -1,29 +1,18 @@
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 
-// Load environment variables
 dotenv.config();
 
-// Check if email configuration exists
-if (!process.env.SENDGRID_API_KEY) {
-  console.warn('SendGrid API key is missing. Email functionality will fall back to development mode.');
-} else {
+if (process.env.SENDGRID_API_KEY) {
   try {
-    // Set the SendGrid API key
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    console.log('SendGrid API key configured successfully.');
   } catch (error) {
-    console.error('Error configuring SendGrid API key:', error);
-    console.warn('Email functionality will fall back to development mode.');
+    console.error('Error configuring SendGrid API key');
   }
 }
 
-// Default sender email
 const DEFAULT_FROM_EMAIL = 'filmvault.noreply@gmail.com';
 
-/**
- * Email templates for different types of emails
- */
 const emailTemplates = {
   verification: (username: string, verificationUrl: string) => ({
     subject: 'Welcome to FilmVault - Please Verify Your Email',
@@ -78,35 +67,15 @@ const emailTemplates = {
   })
 };
 
-/**
- * Send an email using SendGrid
- * @param to Recipient email address
- * @param subject Email subject
- * @param text Plain text version of the email
- * @param html HTML version of the email
- * @returns Promise that resolves when the email is sent
- */
 export const sendEmail = async (to: string, subject: string, text: string, html: string): Promise<boolean> => {
   try {
     const from = process.env.FROM_EMAIL || DEFAULT_FROM_EMAIL;
     const isDevelopmentMode = !process.env.SENDGRID_API_KEY || process.env.NODE_ENV === 'development';
     
-    // Log email details in development mode or when no API key
     if (isDevelopmentMode) {
-      console.log('==== DEVELOPMENT MODE: Email Details ====');
-      console.log(`Email to: ${to}`);
-      console.log(`From: ${from}`);
-      console.log(`Subject: ${subject}`);
-      console.log(`Text: ${text.substring(0, 100)}...`);
-      console.log('HTML Preview:');
-      console.log(html.substring(0, 300) + '...');
-      console.log('=======================================');
-      
-      // In development mode, we'll consider this a "success" for testing purposes
       return true;
     }
     
-    // Create email message
     const msg = {
       to,
       from,
@@ -116,59 +85,19 @@ export const sendEmail = async (to: string, subject: string, text: string, html:
     };
     
     try {
-      // Attempt to send email
-      const response = await sgMail.send(msg);
-      console.log(`Email sent successfully to ${to}!`);
-      console.log('Response status:', response[0].statusCode);
-      console.log('Full response headers:', response[0].headers);
-      
-      // Display the email content for debugging
-      console.log('\n======= EMAIL CONTENT FOR DEBUGGING =======');
-      console.log('To:', to);
-      console.log('From:', from);
-      console.log('Subject:', subject);
-      console.log('Text content (excerpt):', text.substring(0, 100) + '...');
-      console.log('==========================================\n');
+      await sgMail.send(msg);
       return true;
     } catch (sendError: any) {
-      // Handle SendGrid errors but still show email preview
-      console.error('Error sending email via SendGrid:');
-      if (sendError?.response) {
-        console.error('Status code:', sendError.response.statusCode);
-        console.error('Body:', sendError.response.body);
-      } else {
-        console.error('Error details:', JSON.stringify(sendError, null, 2));
-        console.error('Error message:', sendError?.message || sendError);
-      }
-      
-      // Log detailed message for debugging
-      console.error('\n======= EMAIL DELIVERY FAILED =======');
-      console.error('To:', to);
-      console.error('From:', from);
-      console.error('Subject:', subject);
-      console.error('Error type:', typeof sendError);
-      console.error('=======================================\n');
-      
-      // Fall back to development mode behavior
-      console.log('Falling back to development mode behavior...');
+      console.error('Error sending email via SendGrid');
       return true; // Return success for development testing
     }
   } catch (error: any) {
-    console.error('Unexpected error in email service:');
-    console.error(error?.message || error);
+    console.error('Unexpected error in email service');
     return false;
   }
 };
 
-/**
- * Send a verification email to a new user
- * @param email User's email address
- * @param username User's username
- * @param verificationToken JWT verification token
- * @returns Promise that resolves when the email is sent
- */
 export const sendVerificationEmail = async (email: string, username: string, verificationToken: string): Promise<boolean> => {
-  // Use the server URL for the verification link
   const serverUrl = process.env.SERVER_URL || 'http://localhost:3000';
   const verificationUrl = `${serverUrl}/api/auth/verify-email?token=${verificationToken}`;
   
@@ -177,14 +106,7 @@ export const sendVerificationEmail = async (email: string, username: string, ver
   return sendEmail(email, template.subject, template.text, template.html);
 };
 
-/**
- * Send a password reset email
- * @param email User's email address
- * @param resetToken JWT reset token
- * @returns Promise that resolves when the email is sent
- */
 export const sendPasswordResetEmail = async (email: string, resetToken: string): Promise<boolean> => {
-  // Use the server URL for the reset link
   const serverUrl = process.env.SERVER_URL || 'http://localhost:3000';
   const resetUrl = `${serverUrl}/api/auth/reset-password?token=${resetToken}`;
   

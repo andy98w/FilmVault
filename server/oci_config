@@ -1,6 +1,0 @@
-[DEFAULT]
-user=ocid1.user.oc1..aaaaaaaa5zii5jopnr66gd5i3reki4banjn66ery4uanf6eujxqzj64o4peq
-fingerprint=51:97:01:df:99:0f:e8:36:57:ab:ab:9b:cb:8f:30:78
-tenancy=ocid1.tenancy.oc1..aaaaaaaaywmo3jk7mqebx7aahzj4wyntuoqldc7txwr3bhosj6ta6isgtlca
-region=ca-toronto-1
-key_file=/Users/andywu/Documents/andywu47.pem

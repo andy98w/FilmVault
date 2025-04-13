@@ -118,37 +118,23 @@ class StorageService {
                 const processedImage = yield this.processImage(file);
                 // Generate a unique object name (always use .jpg since we're converting to JPEG)
                 const objectName = this.generateObjectName(userId, '.jpg');
-                if (false) { // Disabled OCI direct upload, using PAR only
-                    try {
-                        console.log('OCI upload disabled, using PAR for object access');
-                        // Upload to OCI Object Storage
-                        // OCI direct upload disabled
-                        return '';
-                        // OCI operations are disabled
-                        // Use existing PAR instead of creating a new one for each object
-                        try {
-                            console.log('Using pre-configured PAR URL...');
-                            const parUrl = `${this.parUrl}${objectName}`;
-                            console.log(`PAR URL: ${parUrl}`);
-                            // Verify the URL is accessible
-                            console.log('Verifying PAR URL is accessible...');
-                            const verifyResponse = yield (0, node_fetch_1.default)(parUrl, { method: 'HEAD' });
-                            console.log(`PAR URL verification status: ${verifyResponse.status} ${verifyResponse.statusText}`);
-                            return parUrl;
-                        }
-                        catch (parError) {
-                            console.error('Error using PAR URL:', parError);
-                            // Fallback to standard URL with encoding
-                            const encodedObjectName = encodeURIComponent(objectName);
-                            const directUrl = `${this.baseUrl}${encodedObjectName}`;
-                            console.log(`Falling back to direct URL: ${directUrl}`);
-                            return directUrl;
-                        }
-                    }
-                    catch (ociError) {
-                        console.error('Error uploading to OCI, falling back to local storage:', ociError);
-                        // Fall back to local storage on OCI error
-                    }
+                // Try to use PAR URL first
+                try {
+                    console.log('Using pre-configured PAR URL...');
+                    const parUrl = `${this.parUrl}${objectName}`;
+                    console.log(`PAR URL: ${parUrl}`);
+                    // Verify the URL is accessible
+                    const verifyResponse = yield (0, node_fetch_1.default)(parUrl, { method: 'HEAD' });
+                    console.log(`PAR URL verification status: ${verifyResponse.status} ${verifyResponse.statusText}`);
+                    return parUrl;
+                }
+                catch (parError) {
+                    console.error('Error using PAR URL:', parError);
+                    // Fallback to standard URL with encoding
+                    const encodedObjectName = encodeURIComponent(objectName);
+                    const directUrl = `${this.baseUrl}${encodedObjectName}`;
+                    console.log(`Falling back to direct URL: ${directUrl}`);
+                    return directUrl;
                 }
                 // Fall back to local storage (either if OCI is not configured or if OCI upload failed)
                 const filePath = path_1.default.join(this.localStoragePath, objectName);
@@ -173,30 +159,17 @@ class StorageService {
             try {
                 // Extract the object name from the URL if a full URL is provided
                 const objectName = this.extractObjectNameFromUrl(objectNameOrUrl);
-                if (false) { // Disabled OCI direct deletion
-                    // Delete from OCI Object Storage - disabled
-                    try {
-                        console.log('OCI direct deletion disabled');
-                        // Disabled OCI operations
-                        return false;
-                    }
-                    catch (ociError) {
-                        console.error('Error deleting profile picture from OCI:', ociError);
-                        return false;
-                    }
+                // Use local storage for deletion
+                // Delete from the filesystem
+                const filePath = path_1.default.join(this.localStoragePath, objectName);
+                if (fs_1.default.existsSync(filePath)) {
+                    yield fs_2.promises.unlink(filePath);
+                    console.log(`Profile picture deleted locally from ${filePath}`);
+                    return true;
                 }
                 else {
-                    // For local development, delete from the filesystem
-                    const filePath = path_1.default.join(this.localStoragePath, objectName);
-                    if (fs_1.default.existsSync(filePath)) {
-                        yield fs_2.promises.unlink(filePath);
-                        console.log(`Profile picture deleted locally from ${filePath}`);
-                        return true;
-                    }
-                    else {
-                        console.log(`File does not exist: ${filePath}`);
-                        return false;
-                    }
+                    console.log(`File does not exist: ${filePath}`);
+                    return false;
                 }
             }
             catch (error) {

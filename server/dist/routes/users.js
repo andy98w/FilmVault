@@ -310,4 +310,37 @@ router.post('/upload-profile-picture', auth_1.authenticateToken, upload.single('
         res.status(500).json({ message: 'Server error' });
     }
 }));
+// Remove profile picture
+router.delete('/remove-profile-picture', auth_1.authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authorized' });
+        }
+        // Get current profile picture URL
+        const [userRows] = yield db_1.default.query('SELECT ProfilePic FROM users WHERE id = ?', [userId]);
+        const currentProfilePic = (_b = userRows[0]) === null || _b === void 0 ? void 0 : _b.ProfilePic;
+        // Delete the profile picture from storage if it exists and is not the default
+        if (currentProfilePic && !currentProfilePic.includes('default.jpg')) {
+            try {
+                yield storage_service_1.default.deleteProfilePicture(currentProfilePic);
+                console.log(`Deleted profile picture: ${currentProfilePic}`);
+            }
+            catch (deleteError) {
+                console.error('Error deleting profile picture:', deleteError);
+                // Continue with the process even if deletion fails
+            }
+        }
+        // Update user's record to remove the profile picture reference
+        yield db_1.default.query('UPDATE users SET ProfilePic = NULL WHERE id = ?', [userId]);
+        res.json({
+            message: 'Profile picture removed successfully'
+        });
+    }
+    catch (error) {
+        console.error('Error removing profile picture:', error);
+        res.status(500).json({ message: 'Failed to remove profile picture' });
+    }
+}));
 exports.default = router;

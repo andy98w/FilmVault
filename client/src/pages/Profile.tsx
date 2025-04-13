@@ -2,21 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-
 import { API_URL } from '../config/config';
-
-interface ExtendedUser {
-  id: number;
-  username: string;
-  email: string;
-  profilePic?: string;
-  Biography?: string;
-  FacebookLink?: string;
-  InstagramLink?: string;
-  YoutubeLink?: string;
-  GithubLink?: string;
-  LinkedInLink?: string;
-}
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -24,6 +10,7 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const [editMode, setEditMode] = useState(false);
   
   // Profile picture state
   const [profilePic, setProfilePic] = useState<string | undefined>(user?.profilePic);
@@ -38,12 +25,7 @@ const Profile = () => {
   const [githubLink, setGithubLink] = useState('');
   const [linkedinLink, setLinkedinLink] = useState('');
   
-  // We no longer need password change state variables
-  
-  // Edit mode state
-  const [editMode, setEditMode] = useState(false);
-  
-  // Fetch extended user profile
+  // Fetch user profile
   useEffect(() => {
     const fetchUserProfile = async () => {
       setLoading(true);
@@ -52,7 +34,6 @@ const Profile = () => {
           withCredentials: true
         });
         
-        // Set state from response
         setProfilePic(response.data.ProfilePic);
         setBiography(response.data.Biography || '');
         setFacebookLink(response.data.FacebookLink || '');
@@ -61,7 +42,6 @@ const Profile = () => {
         setGithubLink(response.data.GithubLink || '');
         setLinkedinLink(response.data.LinkedInLink || '');
       } catch (err) {
-        console.error('Error fetching user profile:', err);
         setError('Failed to load your profile. Please try again later.');
       } finally {
         setLoading(false);
@@ -76,13 +56,11 @@ const Profile = () => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       
-      // Check file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         setError('Image is too large. Maximum size is 5MB.');
         return;
       }
       
-      // Check file type
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setError('Invalid file type. Only JPEG, PNG, GIF and WebP images are allowed.');
@@ -90,10 +68,7 @@ const Profile = () => {
       }
       
       setSelectedFile(file);
-      
-      // Create a preview URL for immediate feedback
-      const objectUrl = URL.createObjectURL(file);
-      setProfilePic(objectUrl);
+      setProfilePic(URL.createObjectURL(file));
     }
   };
   
@@ -109,18 +84,9 @@ const Profile = () => {
     setMessage('');
     
     try {
-      // Create form data
       const formData = new FormData();
       formData.append('profilePicture', selectedFile);
       
-      console.log('Uploading profile picture...');
-      console.log('File information:', {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: `${(selectedFile.size / 1024).toFixed(2)} KB`
-      });
-      
-      // Upload to server
       const response = await axios.post(
         `${API_URL}/api/users/upload-profile-picture`,
         formData,
@@ -132,53 +98,53 @@ const Profile = () => {
         }
       );
       
-      console.log('Profile picture upload response:', response.data);
-      
-      // Delay before setting the profile picture to ensure server processing completes
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Update profile picture URL with cache busting to ensure the new image is shown
+      // Add cache-busting parameter
       const profilePicUrl = response.data.profilePicUrl;
-      
-      // Add random cache-busting parameter
       const timestamp = Date.now();
-      const random = Math.floor(Math.random() * 1000000);
       const profilePicWithCacheBuster = profilePicUrl.includes('?') 
-        ? `${profilePicUrl}&_cb=${timestamp}_${random}` 
-        : `${profilePicUrl}?_cb=${timestamp}_${random}`;
-        
-      console.log('Setting profile pic URL with cache buster:', profilePicWithCacheBuster);
+        ? `${profilePicUrl}&_cb=${timestamp}` 
+        : `${profilePicUrl}?_cb=${timestamp}`;
       
-      // Test the URL directly to ensure it's valid
       const img = new Image();
-      img.onload = () => {
-        console.log('Image URL is valid and loads correctly');
-        setProfilePic(profilePicWithCacheBuster);
-      };
-      img.onerror = () => {
-        console.error('Image URL failed to load:', profilePicWithCacheBuster);
-        // Try the URL without cache busting as a fallback
-        setProfilePic(profilePicUrl);
-      };
+      img.onload = () => setProfilePic(profilePicWithCacheBuster);
+      img.onerror = () => setProfilePic(profilePicUrl);
       img.src = profilePicWithCacheBuster;
       
       setMessage('Profile picture updated successfully');
-      
-      // Clear selected file as it's been uploaded
       setSelectedFile(null);
       
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        setMessage('');
-      }, 5000);
+      setTimeout(() => setMessage(''), 5000);
     } catch (err: any) {
-      console.error('Error uploading profile picture:', err);
       setError(err.response?.data?.message || 'Failed to upload profile picture');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+  
+  // Handle profile picture removal
+  const handleRemoveProfilePicture = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile picture?')) {
+      return;
+    }
+    
+    setUploadingPicture(true);
+    setError('');
+    setMessage('');
+    
+    try {
+      await axios.delete(`${API_URL}/api/users/remove-profile-picture`, {
+        withCredentials: true
+      });
       
-      // Auto-hide error message after 5 seconds
-      setTimeout(() => {
-        setError('');
-      }, 5000);
+      setProfilePic(undefined);
+      setSelectedFile(null);
+      setMessage('Profile picture removed successfully');
+      
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to remove profile picture');
+      setTimeout(() => setError(''), 5000);
     } finally {
       setUploadingPicture(false);
     }
@@ -203,21 +169,15 @@ const Profile = () => {
           github_link: githubLink,
           linkedin_link: linkedinLink
         },
-        {
-          withCredentials: true
-        }
+        { withCredentials: true }
       );
       
       setMessage('Profile updated successfully');
       setEditMode(false);
-      
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        setMessage('');
-      }, 5000);
+      setTimeout(() => setMessage(''), 5000);
     } catch (err) {
-      console.error('Error updating profile:', err);
       setError('Failed to update profile. Please try again.');
+      setTimeout(() => setError(''), 5000);
     } finally {
       setLoading(false);
     }
@@ -240,45 +200,102 @@ const Profile = () => {
       <div className="profile-header">
         <div className="profile-pic-container">
           <img 
-            src={profilePic ? `${profilePic}` : '/default.jpg'} 
+            src={profilePic || '/default.jpg'} 
             alt={user?.username || 'Profile'} 
             className="profile-pic-large" 
             onError={(e) => {
-              console.error('Error loading profile image, falling back to default');
-              console.log('Failed image URL:', (e.target as HTMLImageElement).src);
               (e.target as HTMLImageElement).src = '/default.jpg';
             }}
             style={{ objectFit: 'cover' }}
           />
           
-          {/* Profile picture upload controls - only visible in edit mode */}
+          {/* Profile picture controls - only visible in edit mode */}
           {editMode && (
-            <div className="profile-pic-actions">
-              <input
-                type="file"
-                id="profile-picture-upload"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
-              <label 
-                htmlFor="profile-picture-upload"
-                className="profile-pic-edit-button"
-                title="Change profile picture"
-              >
-                📷
-              </label>
-              
-              {selectedFile && (
+            <div className="profile-pic-controls" style={{ position: 'relative' }}>
+              {/* Remove profile picture button */}
+              {profilePic && !selectedFile && (
                 <button
-                  onClick={handleProfilePictureUpload}
+                  onClick={handleRemoveProfilePicture}
                   disabled={uploadingPicture}
-                  className="profile-pic-save-button"
-                  title="Save profile picture"
+                  className="profile-pic-remove-button"
+                  title="Remove profile picture"
+                  style={{
+                    background: 'rgba(255,77,79,0.9)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    position: 'absolute',
+                    left: '-5px',
+                    bottom: '0',
+                    zIndex: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
                 >
-                  {uploadingPicture ? '⏳' : '💾'}
+                  🗑️
                 </button>
               )}
+              
+              {/* Upload controls */}
+              <div style={{ position: 'absolute', right: '10px', bottom: '0', zIndex: 10 }}>
+                <input
+                  type="file"
+                  id="profile-picture-upload"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                <label 
+                  htmlFor="profile-picture-upload"
+                  className="profile-pic-edit-button"
+                  title="Change profile picture"
+                  style={{ 
+                    background: 'rgba(64,169,255,0.9)',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  📷
+                </label>
+                
+                {selectedFile && (
+                  <button
+                    onClick={handleProfilePictureUpload}
+                    disabled={uploadingPicture}
+                    title="Save profile picture"
+                    style={{
+                      position: 'absolute',
+                      right: '0px',
+                      bottom: '40px',
+                      background: 'rgba(82,196,26,0.9)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    {uploadingPicture ? '⏳' : '💾'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -336,59 +336,87 @@ router.post('/upload-profile-picture', authenticateToken, upload.single('profile
       return res.status(400).json({ message: 'No file uploaded' });
     }
     
-    console.log(`Uploading profile picture for user ${userId}...`);
+    const pictureUrl = await storageService.uploadProfilePicture(
+      userId,
+      req.file.buffer,
+      req.file.originalname
+    );
     
-    try {
-      // Upload to Object Storage
-      const pictureUrl = await storageService.uploadProfilePicture(
-        userId,
-        req.file.buffer,
-        req.file.originalname
-      );
-      
-      // Get user's current profile picture URL
-      const [users] = await pool.query(
-        'SELECT ProfilePic FROM users WHERE id = ?',
-        [userId]
-      );
-      
-      const user = (users as any[])[0];
-      const currentProfilePic = user.ProfilePic;
-      
-      // Update user's profile picture in database
-      await pool.query(
-        'UPDATE users SET ProfilePic = ? WHERE id = ?',
-        [pictureUrl, userId]
-      );
-      
-      // If user had a previous profile picture in OCI, delete it
-      if (currentProfilePic && 
-          (currentProfilePic.includes('objectstorage') || 
-           currentProfilePic.includes(storageService.getBucketName()))) {
-        try {
-          await storageService.deleteProfilePicture(currentProfilePic);
-        } catch (deleteError) {
-          console.error('Error deleting old profile picture, continuing anyway:', deleteError);
-        }
+    // Get user's current profile picture URL
+    const [users] = await pool.query(
+      'SELECT ProfilePic FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    const user = (users as any[])[0];
+    const currentProfilePic = user.ProfilePic;
+    
+    // Update user's profile picture in database
+    await pool.query(
+      'UPDATE users SET ProfilePic = ? WHERE id = ?',
+      [pictureUrl, userId]
+    );
+    
+    // Delete previous profile picture if it exists
+    if (currentProfilePic && 
+        (currentProfilePic.includes('objectstorage') || 
+        currentProfilePic.includes(storageService.getBucketName()))) {
+      try {
+        await storageService.deleteProfilePicture(currentProfilePic);
+      } catch (deleteError) {
+        console.error('Error deleting old profile picture:', deleteError);
       }
-      
-      res.json({ 
-        message: 'Profile picture uploaded successfully',
-        profilePicUrl: pictureUrl
-      });
-    } catch (storageError) {
-      console.error('Error with object storage:', storageError);
-      return res.status(500).json({ message: 'Failed to upload profile picture to storage' });
     }
+    
+    res.json({ 
+      message: 'Profile picture uploaded successfully',
+      profilePicUrl: pictureUrl
+    });
   } catch (error) {
-    console.error('Error uploading profile picture:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('Images Only')) {
-        return res.status(400).json({ message: error.message });
-      }
-      return res.status(500).json({ message: 'Server error', error: error.message });
+    if (error instanceof Error && error.message.includes('Images Only')) {
+      return res.status(400).json({ message: error.message });
     }
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error uploading profile picture:', error);
+    res.status(500).json({ message: 'Failed to upload profile picture' });
+  }
+});
+
+// Remove profile picture
+router.delete('/remove-profile-picture', authenticateToken, async (req: express.Request, res: express.Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authorized' });
+    }
+    
+    // Get current profile picture URL
+    const [userRows] = await pool.query(
+      'SELECT ProfilePic FROM users WHERE id = ?',
+      [userId]
+    ) as any[];
+    
+    const currentProfilePic = userRows[0]?.ProfilePic;
+    
+    // Delete the profile picture from storage if it exists and is not the default
+    if (currentProfilePic && !currentProfilePic.includes('default.jpg')) {
+      try {
+        await storageService.deleteProfilePicture(currentProfilePic);
+      } catch (deleteError) {
+        console.error('Error deleting profile picture:', deleteError);
+      }
+    }
+    
+    // Update user's record to remove the profile picture reference
+    await pool.query(
+      'UPDATE users SET ProfilePic = NULL WHERE id = ?',
+      [userId]
+    );
+    
+    res.json({ message: 'Profile picture removed successfully' });
+  } catch (error) {
+    console.error('Error removing profile picture:', error);
+    res.status(500).json({ message: 'Failed to remove profile picture' });
   }
 });
 

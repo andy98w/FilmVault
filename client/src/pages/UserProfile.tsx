@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import MovieCard from '../components/MovieCard';
 import { useAuth } from '../contexts/AuthContext';
 
-// API base URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 interface User {
@@ -36,19 +34,17 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Search and sort state
+  // Reset scroll position when the component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<'rating' | 'title'>('rating');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Reset to first page when search query changes
-  useEffect(() => {
-    // Reset any pagination state if needed
-  }, [searchQuery]);
-
   // Check if the user is viewing their own profile
   useEffect(() => {
-    // If the ID in the URL matches the current logged-in user ID, redirect to the profile page
     if (currentUser && id && parseInt(id) === currentUser.id) {
       navigate('/profile');
       return;
@@ -59,8 +55,6 @@ const UserProfile = () => {
   const sortMovies = (movies: Movie[]) => {
     const sortedMovies = [...movies];
     const isAscending = sortDirection === 'asc';
-    
-    // Helper function to flip sort direction if descending
     const directionMultiplier = isAscending ? 1 : -1;
     
     switch (sortField) {
@@ -82,43 +76,33 @@ const UserProfile = () => {
     }
   };
   
-  // Toggle sort direction
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
   };
 
-  // Handle sort field change
   const handleSortFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortField(e.target.value as 'rating' | 'title');
   };
   
-  // Filtered and sorted movies - moved to top level to satisfy React Hooks rules
   const filteredMovies = useMemo(() => {
-    // First filter by search query
     const filtered = searchQuery 
       ? userMovies.filter(movie => movie.Title.toLowerCase().includes(searchQuery.toLowerCase()))
       : userMovies;
     
-    // Then sort
     return sortMovies(filtered);
   }, [userMovies, searchQuery, sortField, sortDirection]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       setLoading(true);
-      setError(''); // Clear previous errors
+      setError('');
       
       try {
-        // Skip fetching if it's the current user's profile (we'll redirect instead)
         if (currentUser && id && parseInt(id) === currentUser.id) {
           return;
         }
         
-        // Log the API URL for debugging
-        console.log(`Fetching user profile from: ${API_URL}/api/users/profile/${id}`);
-        
         const response = await axios.get(`${API_URL}/api/users/profile/${id}`);
-        console.log('API response:', response.data);
         
         if (!response.data.user) {
           throw new Error('User data not found in response');
@@ -126,27 +110,17 @@ const UserProfile = () => {
         
         setUser(response.data.user);
         
-        // Ensure movies data exists and is an array
         if (response.data.movies && Array.isArray(response.data.movies)) {
-          console.log('Received user movies:', response.data.movies.length);
           setUserMovies(response.data.movies);
         } else {
-          console.warn('No movies data in response or invalid format');
           setUserMovies([]);
         }
       } catch (err: any) {
-        console.error('Error fetching user profile:', err);
-        
-        // More detailed error message based on the error type
         if (err.response) {
-          // The request was made but the server responded with an error status
           setError(`Server error: ${err.response.status} - ${err.response.data?.message || 'Failed to load user profile'}`);
-          console.error('Response data:', err.response.data);
         } else if (err.request) {
-          // The request was made but no response was received
           setError('No response received from server. Please check your connection.');
         } else {
-          // Something else went wrong
           setError(`Failed to load user profile: ${err.message}`);
         }
       } finally {
@@ -156,6 +130,7 @@ const UserProfile = () => {
 
     if (id) {
       fetchUserProfile();
+      window.scrollTo(0, 0);
     }
   }, [id, currentUser]);
 
@@ -168,8 +143,6 @@ const UserProfile = () => {
       </div>
     );
   }
-
-  // The useMemo has been moved to the top level of the component
   
   if (error || !user) {
     return (
@@ -203,9 +176,13 @@ const UserProfile = () => {
     <div className="container">
       <div className="profile-header">
         <img 
-          src={user.ProfilePic || '/default.jpg'} 
+          src={user.ProfilePic ? user.ProfilePic : '/default.jpg'} 
           alt={user.Usernames || 'Profile'} 
           className="profile-pic-large" 
+          onError={(e) => {
+            // Fallback to default if the image fails to load
+            (e.target as HTMLImageElement).src = '/default.jpg';
+          }}
         />
         <div>
           <h1 className="profile-username">{user.Usernames}</h1>

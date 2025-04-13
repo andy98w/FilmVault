@@ -582,100 +582,50 @@ router.get('/person/:id', async (req, res) => {
 // Add movie to user's list (requires authentication)
 router.post('/add', authenticateToken, async (req, res) => {
   try {
-    console.log('Add movie request received:', { ...req.body, userId: req.user?.id });
     const { movie_id, movie_title, poster_path, overview, release_date } = req.body;
     const userId = req.user?.id;
     
     if (!userId) {
-      console.error('User ID not found in authentication token');
       return res.status(401).json({ message: 'User ID not found in authentication token' });
     }
     
-    console.log('Checking if movie exists in database...');
-    // First check if movie exists in our database
-    try {
-      // Debugging: Check movie table structure
-      const [movieColumns] = await pool.query('SHOW COLUMNS FROM movies');
-      console.log('Movies table columns:', movieColumns);
-      
-      // Look for existing movie
-      const [existingMovies] = await pool.query(
-        'SELECT * FROM movies WHERE tmdb_id = ?',
-        [movie_id]
+    // Check if movie exists in our database
+    const [existingMovies] = await pool.query(
+      'SELECT * FROM movies WHERE tmdb_id = ?',
+      [movie_id]
+    );
+    
+    let movieDatabaseId;
+    
+    // If movie doesn't exist, add it
+    if ((existingMovies as any[]).length === 0) {
+      const [insertResult] = await pool.query(
+        'INSERT INTO movies (tmdb_id, title, poster_path, overview, release_date) VALUES (?, ?, ?, ?, ?)',
+        [movie_id, movie_title, poster_path, overview, release_date || null]
       );
-      
-      console.log(`Found ${(existingMovies as any[]).length} existing movies with TMDB ID ${movie_id}`);
-      
-      let movieDatabaseId;
-      
-      // If movie doesn't exist, add it
-      if ((existingMovies as any[]).length === 0) {
-        console.log('Movie not found in database, inserting new record...');
-        const title = movie_title; // Fix for the client-side property name
-        try {
-          const [insertResult] = await pool.query(
-            'INSERT INTO movies (tmdb_id, title, poster_path, overview, release_date) VALUES (?, ?, ?, ?, ?)',
-            [movie_id, title, poster_path, overview, release_date || null]
-          );
-          movieDatabaseId = (insertResult as any).insertId;
-          console.log(`Movie inserted with database ID ${movieDatabaseId}`);
-        } catch (insertError) {
-          console.error('Error inserting movie:', insertError);
-          throw insertError;
-        }
-      } else {
-        movieDatabaseId = (existingMovies as any[])[0].id;
-        console.log(`Using existing movie with database ID ${movieDatabaseId}`);
-      }
-      
-      console.log('Checking if user already has this movie...');
-      // Check if user already has this movie
-      try {
-        // Debug user_movies table structure
-        const [userMoviesColumns] = await pool.query('SHOW COLUMNS FROM user_movies');
-        console.log('user_movies table columns:', userMoviesColumns);
-        
-        const [userMovies] = await pool.query(
-          'SELECT * FROM user_movies WHERE user_id = ? AND movie_id = ?',
-          [userId, movieDatabaseId]
-        );
-        
-        console.log(`Found ${(userMovies as any[]).length} user-movie connections`);
-        
-        if ((userMovies as any[]).length > 0) {
-          return res.status(400).json({ message: 'Movie already in your list' });
-        }
-      } catch (checkError) {
-        console.error('Error checking if user has movie:', checkError);
-        throw checkError;
-      }
-      
-      console.log('Adding movie to user list...');
-      // Add movie to user's list
-      try {
-        await pool.query(
-          'INSERT INTO user_movies (user_id, movie_id) VALUES (?, ?)',
-          [userId, movieDatabaseId]
-        );
-        console.log('Movie successfully added to user list');
-      } catch (addError) {
-        console.error('Error adding movie to user list:', addError);
-        throw addError;
-      }
-      
-      res.status(201).json({ message: 'Movie added to your list' });
-    } catch (dbError) {
-      console.error('Database error in add movie endpoint:', dbError);
-      if (dbError instanceof Error) {
-        return res.status(500).json({ message: 'Database error', error: dbError.message });
-      }
-      throw dbError;
+      movieDatabaseId = (insertResult as any).insertId;
+    } else {
+      movieDatabaseId = (existingMovies as any[])[0].id;
     }
+    
+    // Check if user already has this movie
+    const [userMovies] = await pool.query(
+      'SELECT * FROM user_movies WHERE user_id = ? AND movie_id = ?',
+      [userId, movieDatabaseId]
+    );
+    
+    if ((userMovies as any[]).length > 0) {
+      return res.status(400).json({ message: 'Movie already in your list' });
+    }
+    
+    // Add movie to user's list
+    await pool.query(
+      'INSERT INTO user_movies (user_id, movie_id) VALUES (?, ?)',
+      [userId, movieDatabaseId]
+    );
+    
+    res.status(201).json({ message: 'Movie added to your list' });
   } catch (error) {
-    console.error('Error adding movie:', error);
-    if (error instanceof Error) {
-      return res.status(500).json({ message: 'Server error', error: error.message });
-    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -709,13 +659,11 @@ router.post('/rate', authenticateToken, async (req, res) => {
     );
     
     if ((existingRatings as any[]).length > 0) {
-      // Update existing rating
       await pool.query(
         'UPDATE movie_ratings SET rating = ? WHERE user_id = ? AND movie_id = ?',
         [rating, userId, movieDatabaseId]
       );
     } else {
-      // Add new rating
       await pool.query(
         'INSERT INTO movie_ratings (user_id, movie_id, rating) VALUES (?, ?, ?)',
         [userId, movieDatabaseId, rating]
@@ -724,7 +672,6 @@ router.post('/rate', authenticateToken, async (req, res) => {
     
     res.json({ message: 'Movie rated successfully' });
   } catch (error) {
-    console.error('Error rating movie:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -732,69 +679,32 @@ router.post('/rate', authenticateToken, async (req, res) => {
 // Get user's movies (requires authentication)
 router.get('/user/list', authenticateToken, async (req, res) => {
   try {
-    console.log('Fetching user movies list...');
     const userId = req.user?.id;
     
     if (!userId) {
-      console.error('User ID not found in authentication token');
       return res.status(401).json({ message: 'User ID not found in authentication token' });
     }
     
-    console.log(`Getting movies for user ID ${userId}...`);
+    const [rows] = await pool.query(
+      'SELECT m.*, mr.rating ' +
+      'FROM user_movies um ' +
+      'JOIN movies m ON um.movie_id = m.id ' +
+      'LEFT JOIN movie_ratings mr ON um.movie_id = mr.movie_id AND mr.user_id = ? ' +
+      'WHERE um.user_id = ?',
+      [userId, userId]
+    );
     
-    try {
-      // Debug: Check database structure
-      console.log('Checking database structure...');
-      const [movieColumns] = await pool.query('SHOW COLUMNS FROM movies');
-      console.log('Movies table columns:', movieColumns);
-      
-      const [userMoviesColumns] = await pool.query('SHOW COLUMNS FROM user_movies');
-      console.log('user_movies table columns:', userMoviesColumns);
-      
-      const [ratingColumns] = await pool.query('SHOW COLUMNS FROM movie_ratings');
-      console.log('movie_ratings table columns:', ratingColumns);
-      
-      // Query user's movies with proper column names
-      console.log('Querying user movies...');
-      const [rows] = await pool.query(
-        'SELECT m.*, mr.rating ' +
-        'FROM user_movies um ' +
-        'JOIN movies m ON um.movie_id = m.id ' +
-        'LEFT JOIN movie_ratings mr ON um.movie_id = mr.movie_id AND mr.user_id = ? ' +
-        'WHERE um.user_id = ?',
-        [userId, userId]
-      );
-      
-      console.log(`Found ${(rows as any[]).length} movies for user ${userId}`);
-      console.log('Sample movie data:', rows.length > 0 ? rows[0] : 'No movies found');
-      
-      // Transform database column names to match the expected format
-      console.log('Transforming movie data to client format...');
-      const transformedMovies = (rows as any[]).map(movie => ({
-        MovieID: movie.tmdb_id,
-        Title: movie.title,
-        PosterPath: movie.poster_path,
-        Overview: movie.overview,
-        ReleaseDate: movie.release_date,
-        Rating: movie.rating
-      }));
-      
-      console.log(`Returning ${transformedMovies.length} transformed movies`);
-      console.log('First transformed movie:', transformedMovies.length > 0 ? transformedMovies[0] : 'No movies');
-      
-      res.json(transformedMovies);
-    } catch (dbError) {
-      console.error('Database error fetching user movies:', dbError);
-      if (dbError instanceof Error) {
-        return res.status(500).json({ message: 'Database error', error: dbError.message });
-      }
-      throw dbError;
-    }
+    const transformedMovies = (rows as any[]).map(movie => ({
+      MovieID: movie.tmdb_id,
+      Title: movie.title,
+      PosterPath: movie.poster_path,
+      Overview: movie.overview,
+      ReleaseDate: movie.release_date,
+      Rating: movie.rating
+    }));
+    
+    res.json(transformedMovies);
   } catch (error) {
-    console.error('Error fetching user movies:', error);
-    if (error instanceof Error) {
-      return res.status(500).json({ message: 'Server error', error: error.message });
-    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -805,66 +715,36 @@ router.delete('/remove/:id', authenticateToken, async (req, res) => {
     const tmdbId = req.params.id;
     const userId = req.user?.id;
     
-    console.log(`Request to remove movie with TMDB ID ${tmdbId} for user ${userId}`);
-    
     if (!userId) {
-      console.error('User ID not found in authentication token');
       return res.status(401).json({ message: 'User ID not found in authentication token' });
     }
     
-    try {
-      // Check database tables
-      console.log('Checking database structure...');
-      const [movieColumns] = await pool.query('SHOW COLUMNS FROM movies');
-      console.log('Movies table columns:', movieColumns);
-      
-      const [userMoviesColumns] = await pool.query('SHOW COLUMNS FROM user_movies');
-      console.log('user_movies table columns:', userMoviesColumns);
-      
-      // Get the movie's database ID
-      console.log(`Looking up movie with TMDB ID ${tmdbId}...`);
-      const [movieRows] = await pool.query(
-        'SELECT id FROM movies WHERE tmdb_id = ?',
-        [tmdbId]
-      );
-      
-      console.log(`Found ${(movieRows as any[]).length} movies with TMDB ID ${tmdbId}`);
-      
-      if ((movieRows as any[]).length === 0) {
-        return res.status(404).json({ message: 'Movie not found in database' });
-      }
-      
-      const movieDatabaseId = (movieRows as any[])[0].id;
-      console.log(`Movie has database ID ${movieDatabaseId}`);
-      
-      // Remove from user_movies
-      console.log(`Removing movie ${movieDatabaseId} from user ${userId}'s list...`);
-      await pool.query(
-        'DELETE FROM user_movies WHERE user_id = ? AND movie_id = ?',
-        [userId, movieDatabaseId]
-      );
-      
-      // Also remove any ratings
-      console.log(`Removing any ratings for movie ${movieDatabaseId} by user ${userId}...`);
-      await pool.query(
-        'DELETE FROM movie_ratings WHERE user_id = ? AND movie_id = ?',
-        [userId, movieDatabaseId]
-      );
-      
-      console.log('Successfully removed movie from user list');
-      res.json({ message: 'Movie removed from your list' });
-    } catch (dbError) {
-      console.error('Database error removing movie:', dbError);
-      if (dbError instanceof Error) {
-        return res.status(500).json({ message: 'Database error', error: dbError.message });
-      }
-      throw dbError;
+    // Get the movie's database ID
+    const [movieRows] = await pool.query(
+      'SELECT id FROM movies WHERE tmdb_id = ?',
+      [tmdbId]
+    );
+    
+    if ((movieRows as any[]).length === 0) {
+      return res.status(404).json({ message: 'Movie not found in database' });
     }
+    
+    const movieDatabaseId = (movieRows as any[])[0].id;
+    
+    // Remove from user_movies
+    await pool.query(
+      'DELETE FROM user_movies WHERE user_id = ? AND movie_id = ?',
+      [userId, movieDatabaseId]
+    );
+    
+    // Also remove any ratings
+    await pool.query(
+      'DELETE FROM movie_ratings WHERE user_id = ? AND movie_id = ?',
+      [userId, movieDatabaseId]
+    );
+    
+    res.json({ message: 'Movie removed from your list' });
   } catch (error) {
-    console.error('Error removing movie:', error);
-    if (error instanceof Error) {
-      return res.status(500).json({ message: 'Server error', error: error.message });
-    }
     res.status(500).json({ message: 'Server error' });
   }
 });

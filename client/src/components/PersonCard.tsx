@@ -33,15 +33,15 @@ const PersonCard = ({ person }: PersonCardProps) => {
         {person.profile_path ? (
           <img src={profileUrl} alt={person.name} />
         ) : (
-          <div className="no-image-placeholder">
-            <div>
-              <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>👤</span>
+          <div className="no-image-placeholder" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '255px', width: '100%' }}>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px', textAlign: 'center' }}>👤</span>
               No image<br />available
             </div>
           </div>
         )}
         <div className="tooltip-container">
-          <div className="person-card-title">{person.name}</div>
+          <div className="person-card-title" style={{ textAlign: 'center' }}>{person.name}</div>
           <span className="tooltip-text">{person.name}</span>
         </div>
       </div>

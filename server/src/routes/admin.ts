@@ -4,32 +4,20 @@ import { authenticateAdmin } from '../middleware/admin';
 
 const router = express.Router();
 
-/**
- * @route   GET /api/admin/users
- * @desc    Get all users (admin only)
- * @access  Admin
- */
+// Get all users (admin only)
 router.get('/users', authenticateAdmin, async (req, res) => {
   try {
-    console.log('Admin fetching all users...');
-    
     const [rows] = await pool.query(
       'SELECT id, Usernames, Emails, ProfilePic, email_verified_at, is_admin, created_at FROM users ORDER BY id DESC'
     );
     
-    console.log(`Found ${(rows as any[]).length} users`);
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching users:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-/**
- * @route   DELETE /api/admin/users/:id
- * @desc    Delete a user (admin only)
- * @access  Admin
- */
+// Delete a user (admin only)
 router.delete('/users/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -63,18 +51,12 @@ router.delete('/users/:id', authenticateAdmin, async (req, res) => {
     try {
       await connection.beginTransaction();
       
-      console.log(`Deleting ratings for user ${id}...`);
       await connection.query('DELETE FROM movie_ratings WHERE user_id = ?', [id]);
-      
-      console.log(`Deleting movies for user ${id}...`);
       await connection.query('DELETE FROM user_movies WHERE user_id = ?', [id]);
-      
-      console.log(`Deleting user ${id}...`);
       await connection.query('DELETE FROM users WHERE id = ?', [id]);
       
       await connection.commit();
       
-      console.log(`User ${id} (${user.Usernames}) successfully deleted`);
       res.json({ 
         message: `User ${user.Usernames} (ID: ${id}) has been deleted successfully`,
         deletedUser: {
@@ -85,22 +67,16 @@ router.delete('/users/:id', authenticateAdmin, async (req, res) => {
       });
     } catch (txError) {
       await connection.rollback();
-      console.error('Transaction error:', txError);
       throw txError;
     } finally {
       connection.release();
     }
   } catch (error) {
-    console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-/**
- * @route   POST /api/admin/users/:id/make-admin
- * @desc    Make a user an admin (admin only)
- * @access  Admin
- */
+// Make a user an admin (admin only)
 router.post('/users/:id/make-admin', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -123,7 +99,6 @@ router.post('/users/:id/make-admin', authenticateAdmin, async (req, res) => {
       [id]
     );
     
-    console.log(`User ${id} (${user.Usernames}) promoted to admin`);
     res.json({ 
       message: `User ${user.Usernames} (ID: ${id}) has been promoted to admin`,
       user: {
@@ -133,16 +108,11 @@ router.post('/users/:id/make-admin', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error making user admin:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-/**
- * @route   POST /api/admin/users/:id/remove-admin
- * @desc    Remove admin status from a user (admin only)
- * @access  Admin
- */
+// Remove admin status from a user (admin only)
 router.post('/users/:id/remove-admin', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -172,7 +142,6 @@ router.post('/users/:id/remove-admin', authenticateAdmin, async (req, res) => {
       [id]
     );
     
-    console.log(`Admin privileges removed from user ${id} (${user.Usernames})`);
     res.json({ 
       message: `Admin privileges removed from user ${user.Usernames} (ID: ${id})`,
       user: {
@@ -182,7 +151,6 @@ router.post('/users/:id/remove-admin', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error removing admin status:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

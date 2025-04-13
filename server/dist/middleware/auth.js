@@ -6,8 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authenticateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authenticateToken = (req, res, next) => {
+    var _a;
+    // First try to get token from cookies (prioritize this)
+    const tokenFromCookie = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
+    // Fallback to Authorization header for backward compatibility
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN format
+    const tokenFromHeader = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN format
+    const token = tokenFromCookie || tokenFromHeader;
     if (!token) {
         return res.status(401).json({ message: 'Access denied. No token provided.' });
     }

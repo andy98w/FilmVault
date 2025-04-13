@@ -15,7 +15,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("../config/db"));
 const auth_1 = require("../middleware/auth");
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const storage_service_1 = __importDefault(require("../services/storage.service"));
 const router = express_1.default.Router();
+// Configure multer for file uploads
+const storage = multer_1.default.memoryStorage();
+const upload = (0, multer_1.default)({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB max file size
+    },
+    fileFilter: (req, file, cb) => {
+        // Check file type
+        const filetypes = /jpeg|jpg|png|gif|webp/;
+        const extname = filetypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        const mimetype = filetypes.test(file.mimetype);
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        else {
+            cb(new Error('Error: Images Only! (jpeg, jpg, png, gif, webp)'));
+        }
+    }
+});
 // Get top users by contributions
 router.get('/top', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -32,10 +55,10 @@ router.get('/top', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.log('Checking movie_ratings table structure...');
         const [ratingsColumns] = yield db_1.default.query('SHOW COLUMNS FROM movie_ratings');
         console.log('movie_ratings table columns:', ratingsColumns);
-        // Use the correct column names based on the actual database schema
+        // Use only lowercase column names for consistency
         const [rows] = yield db_1.default.query('SELECT users.id, users.Usernames, users.ProfilePic, ' +
-            'COUNT(user_movies.movie_id) as movie_count, ' +
-            'COUNT(movie_ratings.rating) as rating_count ' +
+            'COUNT(DISTINCT user_movies.movie_id) as movie_count, ' +
+            'COUNT(DISTINCT movie_ratings.id) as rating_count ' +
             'FROM users ' +
             'LEFT JOIN user_movies ON users.id = user_movies.user_id ' +
             'LEFT JOIN movie_ratings ON users.id = movie_ratings.user_id ' +
@@ -73,12 +96,25 @@ router.get('/profile/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
         console.log(`Fetching movies for user ID ${id}...`);
         let movies;
         try {
-            [movies] = yield db_1.default.query('SELECT movies.*, movie_ratings.rating ' +
-                'FROM user_movies ' +
-                'JOIN movies ON user_movies.movie_id = movies.id ' +
-                'LEFT JOIN movie_ratings ON user_movies.movie_id = movie_ratings.movie_id AND movie_ratings.user_id = ? ' +
-                'WHERE user_movies.user_id = ?', [id, id]);
+            // Query for user's movies
+            [movies] = yield db_1.default.query('SELECT DISTINCT m.id, m.tmdb_id, m.title, m.poster_path, m.overview, m.release_date, mr.rating ' +
+                'FROM user_movies um ' +
+                'JOIN movies m ON um.movie_id = m.id ' +
+                'LEFT JOIN movie_ratings mr ON m.id = mr.movie_id AND mr.user_id = ? ' +
+                'WHERE um.user_id = ?', [id, id]);
             console.log(`Found ${movies.length} movies for user ${id}`);
+            // Keep consistent lowercase naming but still transform for client
+            const transformedMovies = movies.map(movie => ({
+                id: movie.id,
+                tmdb_id: movie.tmdb_id,
+                title: movie.title,
+                poster_path: movie.poster_path,
+                overview: movie.overview,
+                release_date: movie.release_date,
+                rating: movie.rating
+            }));
+            console.log(`Transformed ${transformedMovies.length} movies to client format`);
+            movies = transformedMovies;
         }
         catch (movieQueryError) {
             console.error('Error fetching user movies:', movieQueryError);
@@ -106,7 +142,7 @@ router.get('/me', auth_1.authenticateToken, (req, res) => __awaiter(void 0, void
         }
         // Get user info
         try {
-            const [users] = yield db_1.default.query('SELECT id, Usernames, Emails, ProfilePic, Biography, FacebookLink, InstagramLink, YoutubeLink, GithubLink FROM users WHERE id = ?', [userId]);
+            const [users] = yield db_1.default.query('SELECT id, Usernames, Emails, ProfilePic, Biography, FacebookLink, InstagramLink, YoutubeLink, GithubLink, LinkedInLink FROM users WHERE id = ?', [userId]);
             console.log(`Found ${users.length} users with ID ${userId}`);
             if (users.length === 0) {
                 return res.status(404).json({ message: 'User not found' });
@@ -130,7 +166,7 @@ router.get('/me', auth_1.authenticateToken, (req, res) => __awaiter(void 0, void
 router.put('/update', auth_1.authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { username, profile_pic, biography, facebook_link, instagram_link, youtube_link, github_link } = req.body;
+        const { username, profile_pic, biography, facebook_link, instagram_link, youtube_link, github_link, linkedin_link } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
         const updates = {};
         const params = [];
@@ -161,6 +197,10 @@ router.put('/update', auth_1.authenticateToken, (req, res) => __awaiter(void 0, 
         if (github_link !== undefined) {
             updates.GithubLink = '?';
             params.push(github_link);
+        }
+        if (linkedin_link !== undefined) {
+            updates.LinkedInLink = '?';
+            params.push(linkedin_link);
         }
         if (Object.keys(updates).length === 0) {
             return res.status(400).json({ message: 'No fields to update' });
@@ -212,6 +252,59 @@ router.post('/change-password', auth_1.authenticateToken, (req, res) => __awaite
     catch (error) {
         console.error('Error changing password:', error);
         if (error instanceof Error) {
+            return res.status(500).json({ message: 'Server error', error: error.message });
+        }
+        res.status(500).json({ message: 'Server error' });
+    }
+}));
+// Upload profile picture (requires authentication)
+router.post('/upload-profile-picture', auth_1.authenticateToken, upload.single('profilePicture'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        console.log(`Uploading profile picture for user ${userId}...`);
+        try {
+            // Upload to Object Storage
+            const pictureUrl = yield storage_service_1.default.uploadProfilePicture(userId, req.file.buffer, req.file.originalname);
+            // Get user's current profile picture URL
+            const [users] = yield db_1.default.query('SELECT ProfilePic FROM users WHERE id = ?', [userId]);
+            const user = users[0];
+            const currentProfilePic = user.ProfilePic;
+            // Update user's profile picture in database
+            yield db_1.default.query('UPDATE users SET ProfilePic = ? WHERE id = ?', [pictureUrl, userId]);
+            // If user had a previous profile picture in OCI, delete it
+            if (currentProfilePic &&
+                (currentProfilePic.includes('objectstorage') ||
+                    currentProfilePic.includes(storage_service_1.default.getBucketName()))) {
+                try {
+                    yield storage_service_1.default.deleteProfilePicture(currentProfilePic);
+                }
+                catch (deleteError) {
+                    console.error('Error deleting old profile picture, continuing anyway:', deleteError);
+                }
+            }
+            res.json({
+                message: 'Profile picture uploaded successfully',
+                profilePicUrl: pictureUrl
+            });
+        }
+        catch (storageError) {
+            console.error('Error with object storage:', storageError);
+            return res.status(500).json({ message: 'Failed to upload profile picture to storage' });
+        }
+    }
+    catch (error) {
+        console.error('Error uploading profile picture:', error);
+        if (error instanceof Error) {
+            if (error.message.includes('Images Only')) {
+                return res.status(400).json({ message: error.message });
+            }
             return res.status(500).json({ message: 'Server error', error: error.message });
         }
         res.status(500).json({ message: 'Server error' });

@@ -330,8 +330,15 @@ router.post('/login', async (req, res) => {
     res.cookie('auth_token', token, {
       httpOnly: true, // Can't be accessed by JavaScript
       secure: process.env.NODE_ENV === 'production', // Only sent over HTTPS in production
-      sameSite: 'strict', // Prevents CSRF attacks
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+      sameSite: 'none', // Always allow cross-site for API/client separation
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      path: '/' // Ensure cookie is available across the entire domain
+    });
+    
+    console.log('Set auth cookie with options:', {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      path: '/'
     });
     
     // Also return token in response for backward compatibility
@@ -602,8 +609,11 @@ router.post('/logout', async (req, res) => {
   res.clearCookie('auth_token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
   });
+  
+  console.log('Cleared auth cookie');
   
   res.json({ message: 'Logged out successfully' });
 });

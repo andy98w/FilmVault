@@ -57,7 +57,7 @@ router.get('/top', async (req, res) => {
     const [ratingsColumns] = await pool.query('SHOW COLUMNS FROM movie_ratings');
     console.log('movie_ratings table columns:', ratingsColumns);
     
-    // Use the correct column names and improved query to accurately count movies
+    // Use only lowercase column names for consistency
     const [rows] = await pool.query(
       'SELECT users.id, users.Usernames, users.ProfilePic, ' +
       'COUNT(DISTINCT user_movies.movie_id) as movie_count, ' +
@@ -120,14 +120,15 @@ router.get('/profile/:id', async (req, res) => {
       );
       console.log(`Found ${(movies as any[]).length} movies for user ${id}`);
       
-      // Transform database column names to match the expected format in the client
+      // Keep consistent lowercase naming but still transform for client
       const transformedMovies = (movies as any[]).map(movie => ({
-        MovieID: movie.tmdb_id,
-        Title: movie.title,
-        PosterPath: movie.poster_path,
-        Overview: movie.overview,
-        ReleaseDate: movie.release_date,
-        Rating: movie.rating
+        id: movie.id,
+        tmdb_id: movie.tmdb_id,
+        title: movie.title,
+        poster_path: movie.poster_path,
+        overview: movie.overview,
+        release_date: movie.release_date,
+        rating: movie.rating
       }));
       
       console.log(`Transformed ${transformedMovies.length} movies to client format`);

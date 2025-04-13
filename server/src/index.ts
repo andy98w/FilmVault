@@ -10,8 +10,15 @@ import userRoutes from './routes/users';
 import adminRoutes from './routes/admin';
 import { errorHandler } from './middleware/error';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables based on NODE_ENV
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: '.env.production' });
+} else {
+  dotenv.config({ path: '.env.development' });
+}
+console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`Server URL: ${process.env.SERVER_URL}`);
+console.log(`Client URL: ${process.env.CLIENT_URL}`);
 
 // Create Express app
 const app = express();
@@ -19,13 +26,21 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: true, // Allow requests from any origin to fix TMDB API issues
+  origin: process.env.CLIENT_URL || 'http://132.145.111.110', // Explicitly set the client URL
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
   credentials: true // Allow cookies to be sent with requests
 }));
+
+// Log CORS configuration
+console.log('CORS configured with origin:', process.env.CLIENT_URL || 'http://132.145.111.110');
 app.use(express.json());
 app.use(cookieParser()); // Parse cookies
+
+// Log cookie parsing setup
+console.log('Cookie parsing enabled');
+console.log('Client URL:', process.env.CLIENT_URL || 'Not set (allowing all origins)');
 
 // Serve profile pictures statically for local development
 app.use('/profile-pictures', express.static(path.join(__dirname, '../profile-pictures')));

@@ -16,6 +16,7 @@ const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = __importDefault(require("../config/db"));
+const email_service_1 = __importDefault(require("../services/email.service"));
 const router = express_1.default.Router();
 // Simple test endpoints
 router.get('/test-db', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -120,38 +121,41 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
             console.error('Database error when inserting new user:', insertError);
             return res.status(500).json({ message: 'Failed to create user account' });
         }
-        // Since we're having issues with email services, let's enhance the development mode
-        // with a clear verification URL and guidance
-        console.log('Using enhanced development mode for email verification');
         // Create verification URL
         const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
-        // Log detailed information about the verification process
+        // Log detailed information about the verification process (for debugging)
         console.log('==== User Registration - Verification Information ====');
         console.log(`Username: ${username}`);
         console.log(`Email: ${email}`);
         console.log(`Verification token: ${verificationToken}`);
         console.log(`Verification URL: ${verificationUrl}`);
         console.log('====================================================');
-        // For development, we'll provide two options:
-        // 1. Auto-verify the user (skipping email verification)
-        // 2. Return the verification link in the response
         try {
-            // Don't auto-verify the user, so we can test the verification flow
-            // Instead, return the verification URL in the response
-            res.status(201).json({
-                message: 'User registered successfully. In production, you would receive an email with a verification link.',
-                dev_info: {
-                    note: 'DEVELOPMENT MODE: Use this information to verify your account',
-                    verification_token: verificationToken,
-                    verification_url: verificationUrl,
-                    instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
-                }
-            });
+            // Send verification email
+            const emailSent = yield email_service_1.default.sendVerificationEmail(email, username, verificationToken);
+            if (emailSent) {
+                res.status(201).json({
+                    message: 'User registered successfully. Please check your email for a verification link.',
+                });
+            }
+            else {
+                // Fallback if email couldn't be sent
+                console.warn('Email sending failed, using fallback method');
+                res.status(201).json({
+                    message: 'User registered successfully. Please verify your email with the link below.',
+                    dev_info: {
+                        note: 'Email delivery failed. Use this information to verify your account',
+                        verification_token: verificationToken,
+                        verification_url: verificationUrl,
+                        instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
+                    }
+                });
+            }
         }
         catch (error) {
-            console.error('Error in development mode verification:', error);
+            console.error('Error sending verification email:', error);
             res.status(201).json({
-                message: 'User registered but there was an issue. Please use the verification token below.',
+                message: 'User registered but there was an issue sending the verification email. Please use the verification token below.',
                 dev_info: {
                     verification_token: verificationToken,
                     verification_url: verificationUrl
@@ -209,14 +213,33 @@ router.get('/verify-email', (req, res) => __awaiter(void 0, void 0, void 0, func
     try {
         const { token } = req.query;
         if (!token) {
+            console.log('Email verification: No token found in query parameters');
             return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?error=Token is required`);
         }
+        console.log(`Email verification: Redirecting to client with token: ${token}`);
         // Redirect to the front-end verification page
         res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${token}`);
     }
     catch (error) {
         console.error('Email verification redirect error:', error);
         res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?error=Server error`);
+    }
+}));
+// Handle password reset link from email
+router.get('/reset-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { token } = req.query;
+        if (!token) {
+            console.log('Password reset: No token found in query parameters');
+            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?error=Token is required`);
+        }
+        console.log(`Password reset: Redirecting to client with token: ${token}`);
+        // Redirect to the front-end reset password page
+        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${token}`);
+    }
+    catch (error) {
+        console.error('Password reset redirect error:', error);
+        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?error=Server error`);
     }
 }));
 // Login
@@ -253,8 +276,22 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
             email: user.Emails,
             isAdmin: user.is_admin === 1
         }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Set JWT token in HttpOnly cookie (more secure than localStorage)
+        res.cookie('auth_token', token, {
+            httpOnly: true, // Can't be accessed by JavaScript
+            secure: process.env.NODE_ENV === 'production', // Only sent over HTTPS in production
+            sameSite: 'none', // Always allow cross-site for API/client separation
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+            path: '/' // Ensure cookie is available across the entire domain
+        });
+        console.log('Set auth cookie with options:', {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none',
+            path: '/'
+        });
+        // Also return token in response for backward compatibility
         res.json({
-            token,
+            token, // For backward compatibility with existing clients
             user: {
                 id: user.id,
                 username: user.Usernames,
@@ -291,26 +328,46 @@ router.post('/resend-verification', (req, res) => __awaiter(void 0, void 0, void
         const verificationToken = jsonwebtoken_1.default.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1d' });
         // Update the verification token in the database
         yield db_1.default.query('UPDATE users SET verification_token = ? WHERE Emails = ?', [verificationToken, email]);
-        // Using enhanced development mode for email verification
-        console.log('Using enhanced development mode for resending verification');
         // Create verification URL
         const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
-        // Log detailed information about the verification process
+        // Log detailed information about the verification process (for debugging)
         console.log('==== Resend Verification - Information ====');
         console.log(`Email: ${email}`);
         console.log(`Verification token: ${verificationToken}`);
         console.log(`Verification URL: ${verificationUrl}`);
         console.log('===========================================');
-        // Return the verification URL and token in the response for development purposes
-        res.json({
-            message: 'In production, a verification email would be sent. Since this is development mode, use the information below.',
-            dev_info: {
-                note: 'DEVELOPMENT MODE: Use this information to verify your account',
-                verification_token: verificationToken,
-                verification_url: verificationUrl,
-                instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
+        try {
+            // Send verification email
+            const emailSent = yield email_service_1.default.sendVerificationEmail(email, user.Usernames, verificationToken);
+            if (emailSent) {
+                res.json({
+                    message: 'Verification email has been sent. Please check your email.',
+                });
             }
-        });
+            else {
+                // Fallback if email couldn't be sent
+                console.warn('Email sending failed, using fallback method');
+                res.json({
+                    message: 'Could not send verification email. Please use the link below to verify your account.',
+                    dev_info: {
+                        note: 'Email delivery failed. Use this information to verify your account',
+                        verification_token: verificationToken,
+                        verification_url: verificationUrl,
+                        instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
+                    }
+                });
+            }
+        }
+        catch (error) {
+            console.error('Error sending verification email:', error);
+            res.json({
+                message: 'Failed to send verification email. Please use the verification link below.',
+                dev_info: {
+                    verification_token: verificationToken,
+                    verification_url: verificationUrl
+                }
+            });
+        }
     }
     catch (error) {
         console.error('Resend verification error:', error);
@@ -348,26 +405,49 @@ router.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, 
         const resetToken = jsonwebtoken_1.default.sign({ email, userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         // Update user with reset token
         yield db_1.default.query('UPDATE users SET reset_token = ? WHERE Emails = ?', [resetToken, email]);
-        // Using enhanced development mode for password reset
-        console.log('Using enhanced development mode for password reset');
         // Create reset URL
         const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-        // Log detailed information about the reset process
+        // Log detailed information about the reset process (for debugging)
         console.log('==== Password Reset - Information ====');
         console.log(`Email: ${email}`);
         console.log(`Reset token: ${resetToken}`);
         console.log(`Reset URL: ${resetUrl}`);
         console.log('=====================================');
-        // Return the reset URL and token in the response for development purposes
-        res.json({
-            message: 'If this email is registered, a reset link has been sent. Since this is development mode, you can use the information below.',
-            dev_info: {
-                note: 'DEVELOPMENT MODE: Use this information to reset your password',
-                reset_token: resetToken,
-                reset_url: resetUrl,
-                instructions: 'Either click the reset URL or copy the token and use it on the reset password page.'
+        try {
+            // Send password reset email
+            const emailSent = yield email_service_1.default.sendPasswordResetEmail(email, resetToken);
+            if (emailSent) {
+                // For security reasons, don't reveal whether a user exists or not
+                res.json({
+                    message: 'If a user with that email exists, a password reset link has been sent to their email.',
+                });
             }
-        });
+            else {
+                // Fallback if email couldn't be sent, but only in development mode
+                console.warn('Email sending failed, using fallback method');
+                res.json({
+                    message: 'If a user with that email exists, a password reset link has been sent to their email.',
+                    dev_info: {
+                        note: 'Email delivery failed. Use this information to reset your password',
+                        reset_token: resetToken,
+                        reset_url: resetUrl,
+                        instructions: 'Either click the reset URL or copy the token and use it on the reset password page.'
+                    }
+                });
+            }
+        }
+        catch (error) {
+            console.error('Error sending password reset email:', error);
+            // Don't expose the error details to the client for security reasons
+            res.json({
+                message: 'If a user with that email exists, a password reset link has been sent to their email.',
+                dev_info: {
+                    note: 'Email delivery failed. Use this information to reset your password',
+                    reset_token: resetToken,
+                    reset_url: resetUrl
+                }
+            });
+        }
     }
     catch (error) {
         console.error('Forgot password error:', error);
@@ -414,5 +494,17 @@ router.post('/reset-password', (req, res) => __awaiter(void 0, void 0, void 0, f
         console.error('Reset password error:', error);
         res.status(500).json({ message: 'Server error' });
     }
+}));
+// Logout
+router.post('/logout', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // Clear the auth cookie
+    res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/'
+    });
+    console.log('Cleared auth cookie');
+    res.json({ message: 'Logged out successfully' });
 }));
 exports.default = router;

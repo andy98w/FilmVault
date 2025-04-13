@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../api/config';
 
-// API base URL for backward compatibility
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+// Determine environment settings
+const isProduction = process.env.NODE_ENV === 'production';
+const useJwtToken = process.env.REACT_APP_USE_JWT === 'true' || isProduction;
 
 interface User {
   id: number;
@@ -43,19 +44,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Try to get user data using the cookie first
+    // Authentication check on app initialization
     const checkAuthentication = async () => {
+      console.log(`Authentication check started (${isProduction ? 'production' : 'development'})`);
       try {
-        // First check if we have a cookie session
-        await fetchUserData();
-      } catch (err) {
-        // If cookie auth fails, try localStorage token as fallback
+        // Check for token in localStorage
         const token = localStorage.getItem('token');
+        console.log(`Token in localStorage: ${token ? 'Present' : 'Not found'}`);
+        
         if (token) {
-          await fetchUserData(token);
-        } else {
+          // Try token-based authentication first regardless of environment
+          console.log('Using JWT token for authentication');
+          
+          try {
+            // Try to authenticate with the token
+            await fetchUserData(token);
+            console.log('Token authentication successful');
+            return; // Exit if token auth successful
+          } catch (tokenErr) {
+            // If token authentication fails, clear it and try cookie-based auth
+            console.log('Token authentication failed:', tokenErr);
+            localStorage.removeItem('token');
+          }
+        }
+        
+        // Try cookie-based authentication if no token or token auth failed
+        console.log('Falling back to cookie-based authentication');
+        try {
+          await fetchUserData();
+          console.log('Cookie authentication successful');
+        } catch (cookieErr) {
+          console.log('Cookie authentication failed');
           setLoading(false);
         }
+      } catch (err) {
+        console.error('Authentication check failed:', err);
+        setLoading(false);
       }
     };
     
@@ -65,10 +89,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const fetchUserData = async (token?: string) => {
     try {
       setLoading(true);
-      // Use the API instance which already has withCredentials configured
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const response = await api.get('/api/users/me', { headers });
+      console.log('Fetching user data...');
       
+      // Prepare request config
+      const config: {
+        headers?: Record<string, string>;
+        withCredentials: boolean;
+      } = {
+        withCredentials: true // Always include credentials for cookie support
+      };
+      
+      // Add token to headers if provided
+      if (token) {
+        config.headers = { Authorization: `Bearer ${token}` };
+        console.log('Using provided token for authentication');
+      } else {
+        console.log('No token provided, using cookie authentication');
+      }
+      
+      // Make the API request
+      const response = await api.get('/api/users/me', config);
+      
+      // Update user state with response data
       setUser({
         id: response.data.id,
         username: response.data.Usernames,
@@ -76,9 +118,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         profilePic: response.data.ProfilePic,
         isAdmin: response.data.is_admin === 1
       });
+      
+      console.log('User data fetched successfully');
     } catch (err) {
-      console.error('Failed to get user data', err);
-      localStorage.removeItem('token');
+      console.error('Failed to get user data:', err);
+      throw err; // Rethrow to allow calling code to handle specific errors
     } finally {
       setLoading(false);
     }
@@ -88,17 +132,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post('/api/auth/login', { email, password });
+      console.log('Attempting login...');
       
-      // Still store token in localStorage for backward compatibility
-      localStorage.setItem('token', response.data.token);
+      // Make login request with credentials for cookie support
+      const response = await api.post('/api/auth/login', 
+        { email, password },
+        { withCredentials: true }
+      );
       
-      // User data from login includes isAdmin flag
-      setUser({
-        ...response.data.user,
-        isAdmin: response.data.user.isAdmin || false
-      });
+      console.log('Login response received');
+      
+      // Always save token to localStorage for all environments
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        console.log('JWT token saved to localStorage');
+        
+        // Set Authorization header for current session
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      } else {
+        console.warn('No token received in login response');
+      }
+      
+      // Set user data from the response
+      if (response.data.user) {
+        setUser({
+          id: response.data.user.id,
+          username: response.data.user.username,
+          email: response.data.user.email,
+          profilePic: response.data.user.profilePic,
+          isAdmin: response.data.user.isAdmin || false
+        });
+        console.log('User state updated with login response data');
+      } else {
+        console.warn('No user data in login response, fetching from /api/users/me');
+        // If user data not in response, fetch it separately
+        const token = response.data.token;
+        await fetchUserData(token);
+      }
+      
+      console.log('Login process completed successfully');
     } catch (err: any) {
+      console.error('Login error:', err.response?.data?.message || err.message);
       setError(err.response?.data?.message || 'Failed to login');
       throw err;
     } finally {
@@ -110,8 +184,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      await api.post('/api/auth/register', { username, email, password });
+      console.log('Attempting to register user');
+      
+      // Explicitly set withCredentials
+      await api.post(
+        '/api/auth/register', 
+        { username, email, password },
+        { withCredentials: true }
+      );
+      
+      console.log('Registration successful');
     } catch (err: any) {
+      console.error('Registration error:', err.response?.data || err.message);
       setError(err.response?.data?.message || 'Failed to register');
       throw err;
     } finally {
@@ -121,15 +205,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      // Call the server logout endpoint to clear the cookie
-      await api.post('/api/auth/logout');
+      console.log('Logging out...');
       
-      // For backward compatibility, also remove from localStorage
+      // Try server-side logout to clear cookies
+      try {
+        await api.post('/api/auth/logout', {}, { withCredentials: true });
+        console.log('Server-side logout successful');
+      } catch (error) {
+        console.error('Server-side logout failed:', error);
+        // Continue with client-side logout even if server logout fails
+      }
+      
+      // Always perform client-side logout
+      // 1. Clear localStorage token
       localStorage.removeItem('token');
+      console.log('Token removed from localStorage');
+      
+      // 2. Clear Authorization header
+      if (api.defaults.headers.common['Authorization']) {
+        delete api.defaults.headers.common['Authorization'];
+        console.log('Authorization header removed from API client');
+      }
+      
+      // 3. Reset user state
       setUser(null);
+      
+      console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
-      // Still clear local state even if server call fails
+      // Still reset state in case of any errors
       localStorage.removeItem('token');
       setUser(null);
     }

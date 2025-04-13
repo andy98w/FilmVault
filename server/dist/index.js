@@ -15,24 +15,49 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const path_1 = __importDefault(require("path"));
 const db_1 = __importDefault(require("./config/db"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const movies_1 = __importDefault(require("./routes/movies"));
 const users_1 = __importDefault(require("./routes/users"));
 const admin_1 = __importDefault(require("./routes/admin"));
 const error_1 = require("./middleware/error");
-// Load environment variables
-dotenv_1.default.config();
+// Load environment variables based on NODE_ENV
+if (process.env.NODE_ENV === 'production') {
+    dotenv_1.default.config({ path: '.env.production' });
+}
+else {
+    dotenv_1.default.config({ path: '.env.development' });
+}
+console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`Server URL: ${process.env.SERVER_URL}`);
+console.log(`Client URL: ${process.env.CLIENT_URL}`);
 // Create Express app
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // Middleware
 app.use((0, cors_1.default)({
-    origin: '*', // Allow all origins
+    origin: process.env.CLIENT_URL || 'http://132.145.111.110', // Explicitly set the client URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie'],
+    credentials: true // Allow cookies to be sent with requests
 }));
+// Log CORS configuration
+console.log('CORS configured with origin:', process.env.CLIENT_URL || 'http://132.145.111.110');
 app.use(express_1.default.json());
+app.use((0, cookie_parser_1.default)()); // Parse cookies
+// Log cookie parsing setup
+console.log('Cookie parsing enabled');
+console.log('Client URL:', process.env.CLIENT_URL || 'Not set (allowing all origins)');
+// Serve profile pictures statically for local development
+app.use('/profile-pictures', express_1.default.static(path_1.default.join(__dirname, '../profile-pictures')));
+// Log middleware configuration
+console.log('CORS configuration:', {
+    origin: true,
+    credentials: true
+});
 // Database initialization function
 function initializeDatabase() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -124,6 +149,23 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         status: 'online',
         dbConnection: process.env.USE_MOCK_DATA === 'true' ? 'mock' : 'live'
+    });
+});
+// Catch-all route for debugging non-matched paths
+app.get('*', (req, res) => {
+    console.log(`Unmatched route: ${req.originalUrl}`);
+    // Check if this is a verification or reset request
+    if (req.originalUrl.includes('verify-email')) {
+        console.log('Redirecting unmatched verify-email request to client');
+        return res.redirect(`${process.env.CLIENT_URL}/verify-email`);
+    }
+    else if (req.originalUrl.includes('reset-password')) {
+        console.log('Redirecting unmatched reset-password request to client');
+        return res.redirect(`${process.env.CLIENT_URL}/reset-password`);
+    }
+    res.status(404).json({
+        message: 'Route not found',
+        requestedPath: req.originalUrl
     });
 });
 // Error handler middleware

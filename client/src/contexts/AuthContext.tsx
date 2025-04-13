@@ -3,7 +3,7 @@ import api from '../api/config';
 
 // Determine environment settings
 const isProduction = process.env.NODE_ENV === 'production';
-const useJwtToken = process.env.REACT_APP_USE_JWT === 'true' || isProduction;
+const useJwtToken = process.env.REACT_APP_USE_JWT === 'true';
 
 interface User {
   id: number;

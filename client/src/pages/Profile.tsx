@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -37,10 +38,7 @@ const Profile = () => {
   const [githubLink, setGithubLink] = useState('');
   const [linkedinLink, setLinkedinLink] = useState('');
   
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // We no longer need password change state variables
   
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
@@ -115,6 +113,13 @@ const Profile = () => {
       const formData = new FormData();
       formData.append('profilePicture', selectedFile);
       
+      console.log('Uploading profile picture...');
+      console.log('File information:', {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: `${(selectedFile.size / 1024).toFixed(2)} KB`
+      });
+      
       // Upload to server
       const response = await axios.post(
         `${API_URL}/api/users/upload-profile-picture`,
@@ -127,8 +132,36 @@ const Profile = () => {
         }
       );
       
-      // Update profile picture URL
-      setProfilePic(response.data.profilePicUrl);
+      console.log('Profile picture upload response:', response.data);
+      
+      // Delay before setting the profile picture to ensure server processing completes
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update profile picture URL with cache busting to ensure the new image is shown
+      const profilePicUrl = response.data.profilePicUrl;
+      
+      // Add random cache-busting parameter
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000000);
+      const profilePicWithCacheBuster = profilePicUrl.includes('?') 
+        ? `${profilePicUrl}&_cb=${timestamp}_${random}` 
+        : `${profilePicUrl}?_cb=${timestamp}_${random}`;
+        
+      console.log('Setting profile pic URL with cache buster:', profilePicWithCacheBuster);
+      
+      // Test the URL directly to ensure it's valid
+      const img = new Image();
+      img.onload = () => {
+        console.log('Image URL is valid and loads correctly');
+        setProfilePic(profilePicWithCacheBuster);
+      };
+      img.onerror = () => {
+        console.error('Image URL failed to load:', profilePicWithCacheBuster);
+        // Try the URL without cache busting as a fallback
+        setProfilePic(profilePicUrl);
+      };
+      img.src = profilePicWithCacheBuster;
+      
       setMessage('Profile picture updated successfully');
       
       // Clear selected file as it's been uploaded
@@ -190,65 +223,7 @@ const Profile = () => {
     }
   };
   
-  // Handle password change
-  const handlePasswordChange = async (e: FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      setError('New passwords do not match');
-      // Auto-hide error message after 5 seconds
-      setTimeout(() => {
-        setError('');
-      }, 5000);
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters long');
-      // Auto-hide error message after 5 seconds
-      setTimeout(() => {
-        setError('');
-      }, 5000);
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    setMessage('');
-    
-    try {
-      await axios.post(
-        `${API_URL}/api/users/change-password`,
-        {
-          current_password: currentPassword,
-          new_password: newPassword
-        },
-        {
-          withCredentials: true
-        }
-      );
-      
-      setMessage('Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        setMessage('');
-      }, 5000);
-    } catch (err: any) {
-      console.error('Error changing password:', err);
-      setError(err.response?.data?.message || 'Failed to change password. Please try again.');
-      
-      // Auto-hide error message after 5 seconds
-      setTimeout(() => {
-        setError('');
-      }, 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Password change has been replaced with email reset flow
 
   if (loading && !user) {
     return (
@@ -265,39 +240,47 @@ const Profile = () => {
       <div className="profile-header">
         <div className="profile-pic-container">
           <img 
-            src={profilePic || '/default.jpg'} 
+            src={profilePic ? `${profilePic}` : '/default.jpg'} 
             alt={user?.username || 'Profile'} 
             className="profile-pic-large" 
+            onError={(e) => {
+              console.error('Error loading profile image, falling back to default');
+              console.log('Failed image URL:', (e.target as HTMLImageElement).src);
+              (e.target as HTMLImageElement).src = '/default.jpg';
+            }}
+            style={{ objectFit: 'cover' }}
           />
           
-          {/* Profile picture upload controls */}
-          <div className="profile-pic-actions">
-            <input
-              type="file"
-              id="profile-picture-upload"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <label 
-              htmlFor="profile-picture-upload"
-              className="profile-pic-edit-button"
-              title="Change profile picture"
-            >
-              📷
-            </label>
-            
-            {selectedFile && (
-              <button
-                onClick={handleProfilePictureUpload}
-                disabled={uploadingPicture}
-                className="profile-pic-save-button"
-                title="Save profile picture"
+          {/* Profile picture upload controls - only visible in edit mode */}
+          {editMode && (
+            <div className="profile-pic-actions">
+              <input
+                type="file"
+                id="profile-picture-upload"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              <label 
+                htmlFor="profile-picture-upload"
+                className="profile-pic-edit-button"
+                title="Change profile picture"
               >
-                {uploadingPicture ? '⏳' : '💾'}
-              </button>
-            )}
-          </div>
+                📷
+              </label>
+              
+              {selectedFile && (
+                <button
+                  onClick={handleProfilePictureUpload}
+                  disabled={uploadingPicture}
+                  className="profile-pic-save-button"
+                  title="Save profile picture"
+                >
+                  {uploadingPicture ? '⏳' : '💾'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
         
         <div>
@@ -665,74 +648,33 @@ const Profile = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '15px' }}>
               <h3 style={{ margin: 0 }}>Change Password</h3>
             </div>
-            <form onSubmit={handlePasswordChange}>
-              <div style={{ marginBottom: '20px' }}>
-                <label htmlFor="currentPassword" style={{ display: 'block', marginBottom: '8px' }}>
-                  Current Password
-                </label>
-                <input 
-                  type="password"
-                  id="currentPassword"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter your current password"
-                  required
-                  style={{ 
-                    width: '100%',
-                    background: 'var(--nav-background)',
-                  }}
-                />
-              </div>
+            
+            <div style={{ 
+              background: 'var(--nav-background)', 
+              padding: '20px', 
+              borderRadius: '8px',
+              marginBottom: '30px'
+            }}>
+              <p style={{ marginBottom: '20px' }}>
+                To change your password, we'll send you an email with a secure link.
+              </p>
               
-              <div style={{ marginBottom: '20px' }}>
-                <label htmlFor="newPassword" style={{ display: 'block', marginBottom: '8px' }}>
-                  New Password
-                </label>
-                <input 
-                  type="password"
-                  id="newPassword"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter your new password"
-                  required
-                  minLength={6}
-                  style={{ 
-                    width: '100%',
-                    background: 'var(--nav-background)',
-                  }}
-                />
-              </div>
-              
-              <div style={{ marginBottom: '30px' }}>
-                <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '8px' }}>
-                  Confirm New Password
-                </label>
-                <input 
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  required
-                  minLength={6}
-                  style={{ 
-                    width: '100%',
-                    background: 'var(--nav-background)',
-                  }}
-                />
-              </div>
-              
-              <button 
-                type="submit"
+              <Link 
+                to="/forgot-password" 
                 style={{ 
+                  display: 'inline-block',
                   background: 'var(--primary-color)',
                   color: 'var(--background-dark)',
+                  padding: '10px 20px',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontWeight: 'bold',
                   marginTop: '10px'
                 }}
               >
-                Update Password
-              </button>
-            </form>
+                Send Password Reset Email
+              </Link>
+            </div>
           </div>
           
           <div style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px', marginBottom: '40px' }}>

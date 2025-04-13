@@ -279,13 +279,13 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         // Set JWT token in HttpOnly cookie (more secure than localStorage)
         res.cookie('auth_token', token, {
             httpOnly: true, // Can't be accessed by JavaScript
-            secure: process.env.NODE_ENV === 'production', // Only sent over HTTPS in production
+            secure: false, // Allow cookies over HTTP in all environments
             sameSite: 'none', // Always allow cross-site for API/client separation
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
             path: '/' // Ensure cookie is available across the entire domain
         });
         console.log('Set auth cookie with options:', {
-            secure: process.env.NODE_ENV === 'production',
+            secure: false,
             sameSite: 'none',
             path: '/'
         });
@@ -483,7 +483,15 @@ router.post('/reset-password', (req, res) => __awaiter(void 0, void 0, void 0, f
             const hashedPassword = yield bcrypt_1.default.hash(password, salt);
             // Update user password and clear reset token
             yield db_1.default.query('UPDATE users SET Passwords = ?, reset_token = NULL WHERE Emails = ? AND reset_token = ?', [hashedPassword, decoded.email, token]);
-            res.json({ message: 'Password has been reset successfully. You can now log in with your new password.' });
+            // Clear auth cookies to invalidate all existing sessions for security
+            res.clearCookie('auth_token', {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'none',
+                path: '/'
+            });
+            console.log('Password reset: Cleared auth cookie to invalidate sessions');
+            res.json({ message: 'Password has been reset successfully. You will need to log in with your new password.' });
         }
         catch (jwtError) {
             console.error('JWT verification error:', jwtError);
@@ -500,8 +508,8 @@ router.post('/logout', (req, res) => __awaiter(void 0, void 0, void 0, function*
     // Clear the auth cookie
     res.clearCookie('auth_token', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: false,
+        sameSite: 'none',
         path: '/'
     });
     console.log('Cleared auth cookie');

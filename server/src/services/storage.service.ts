@@ -2,11 +2,19 @@ import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
+import sharp from 'sharp';
+import ociConfig from '../config/oci';
+import fetch from 'node-fetch';
+import { promisify } from 'util';
 
 class StorageService {
   private bucketName: string;
   private localStoragePath: string;
   private baseUrl: string;
+  private useOCI: boolean;
+  private ociClient: any | null;
+  private sleep = promisify(setTimeout);
+  private parUrl: string;
   
   /**
    * Get the bucket name
@@ -19,12 +27,27 @@ class StorageService {
   constructor() {
     this.bucketName = process.env.OCI_PROFILE_PICTURES_BUCKET || 'filmvault-profile-pictures';
     this.baseUrl = process.env.OCI_BUCKET_URL || 'http://localhost:3000/profile-pictures';
+    this.parUrl = process.env.OCI_PAR_URL || 'https://objectstorage.ca-toronto-1.oraclecloud.com/p/j760BvPoSbgh7gfqrrAHfcdRpnlyiHgLdXdwhIq5m9MZR48ygD8XcD4N32g6AFZg/n/yzep9haqilyk/b/filmvault-profile-pictures/o/';
     
     // For local development, store files in the server directory
     this.localStoragePath = path.join(__dirname, '../../profile-pictures');
     
-    // Create the profile pictures directory if it doesn't exist
-    this.initLocalStorage();
+    // Check if OCI configuration is valid
+    this.useOCI = ociConfig.isConfigValid() && ociConfig.isObjectStorageConfigValid();
+    this.ociClient = this.useOCI ? ociConfig.createObjectStorageClient() : null;
+    
+    console.log('Storage Configuration:');
+    console.log(`- Using local path: ${this.localStoragePath}`);
+    console.log(`- Using PAR URL: ${this.parUrl ? 'Yes' : 'No'}`);
+    console.log(`- Base URL: ${this.baseUrl}`);
+    
+    if (this.useOCI && this.ociClient) {
+      console.log('OCI storage configured for profile pictures');
+    } else {
+      console.log('OCI storage NOT configured, using local storage');
+      // Create the profile pictures directory if it doesn't exist
+      this.initLocalStorage();
+    }
   }
   
   private async initLocalStorage() {
@@ -52,6 +75,32 @@ class StorageService {
   }
   
   /**
+   * Process image to ensure consistent format and size
+   * @param file The original file buffer
+   * @param format The output format (default: jpeg)
+   * @returns A processed image buffer
+   */
+  private async processImage(file: Buffer, format: 'jpeg' | 'png' = 'jpeg'): Promise<Buffer> {
+    try {
+      console.log('Processing image with Sharp...');
+      // Process with sharp - resize to appropriate dimensions and maintain aspect ratio
+      return await sharp(file)
+        .rotate() // Auto-rotate based on EXIF data
+        .resize({
+          width: 400, // Standard profile picture size
+          height: 400,
+          fit: 'cover', // Crop to fill the dimensions
+          position: 'center' // Focus on the center of the image
+        })
+        .toFormat(format, { quality: 90 }) // Use high quality
+        .toBuffer();
+    } catch (error) {
+      console.error('Error processing image:', error);
+      throw new Error('Failed to process image');
+    }
+  }
+  
+  /**
    * Upload a profile picture to storage
    * @param userId The user ID
    * @param file The file buffer
@@ -60,13 +109,53 @@ class StorageService {
    */
   async uploadProfilePicture(userId: number, file: Buffer, filename: string): Promise<string> {
     try {
-      // Generate a unique object name
-      const fileExt = path.extname(filename).toLowerCase();
-      const objectName = this.generateObjectName(userId, fileExt);
+      // Process the image to ensure consistent format and prevent distortion
+      const processedImage = await this.processImage(file);
       
-      // For local development, save to the filesystem
+      // Generate a unique object name (always use .jpg since we're converting to JPEG)
+      const objectName = this.generateObjectName(userId, '.jpg');
+      
+      if (false) { // Disabled OCI direct upload, using PAR only
+        try {
+          console.log('OCI upload disabled, using PAR for object access');
+          
+          // Upload to OCI Object Storage
+          // OCI direct upload disabled
+          return '';
+          
+          // OCI operations are disabled
+          
+          // Use existing PAR instead of creating a new one for each object
+          try {
+            console.log('Using pre-configured PAR URL...');
+            const parUrl = `${this.parUrl}${objectName}`;
+            console.log(`PAR URL: ${parUrl}`);
+            
+            // Verify the URL is accessible
+            console.log('Verifying PAR URL is accessible...');
+            const verifyResponse = await fetch(parUrl, { method: 'HEAD' });
+            console.log(`PAR URL verification status: ${verifyResponse.status} ${verifyResponse.statusText}`);
+            
+            return parUrl;
+          } catch (parError) {
+            console.error('Error using PAR URL:', parError);
+            
+            // Fallback to standard URL with encoding
+            const encodedObjectName = encodeURIComponent(objectName);
+            const directUrl = `${this.baseUrl}${encodedObjectName}`;
+            console.log(`Falling back to direct URL: ${directUrl}`);
+            
+            return directUrl;
+          }
+        } catch (ociError) {
+          console.error('Error uploading to OCI, falling back to local storage:', ociError);
+          // Fall back to local storage on OCI error
+        }
+      }
+      
+      // Fall back to local storage (either if OCI is not configured or if OCI upload failed)
       const filePath = path.join(this.localStoragePath, objectName);
-      await fsPromises.writeFile(filePath, file);
+      await fsPromises.writeFile(filePath, processedImage);
       console.log(`Profile picture saved locally to ${filePath}`);
       
       // Return a URL-like string that points to the file
@@ -87,16 +176,29 @@ class StorageService {
       // Extract the object name from the URL if a full URL is provided
       const objectName = this.extractObjectNameFromUrl(objectNameOrUrl);
       
-      // For local development, delete from the filesystem
-      const filePath = path.join(this.localStoragePath, objectName);
-      
-      if (fs.existsSync(filePath)) {
-        await fsPromises.unlink(filePath);
-        console.log(`Profile picture deleted locally from ${filePath}`);
-        return true;
+      if (false) { // Disabled OCI direct deletion
+        // Delete from OCI Object Storage - disabled
+        try {
+          console.log('OCI direct deletion disabled');
+          
+          // Disabled OCI operations
+          return false;
+        } catch (ociError) {
+          console.error('Error deleting profile picture from OCI:', ociError);
+          return false;
+        }
       } else {
-        console.log(`File does not exist: ${filePath}`);
-        return false;
+        // For local development, delete from the filesystem
+        const filePath = path.join(this.localStoragePath, objectName);
+        
+        if (fs.existsSync(filePath)) {
+          await fsPromises.unlink(filePath);
+          console.log(`Profile picture deleted locally from ${filePath}`);
+          return true;
+        } else {
+          console.log(`File does not exist: ${filePath}`);
+          return false;
+        }
       }
     } catch (error) {
       console.error('Error deleting profile picture:', error);
@@ -142,7 +244,15 @@ class StorageService {
     } catch (error) {
       // If URL parsing fails, try a simple approach
       const parts = url.split('/');
-      return parts[parts.length - 1];
+      let objectName = parts[parts.length - 1];
+      
+      // Also remove any query parameters
+      if (objectName.includes('?')) {
+        objectName = objectName.split('?')[0];
+      }
+      
+      console.log(`Extracted object name from URL: ${objectName}`);
+      return objectName;
     }
   }
 }

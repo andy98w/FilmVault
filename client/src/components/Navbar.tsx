@@ -15,7 +15,12 @@ const Navbar = () => {
             <img 
               src={user?.profilePic || "/default.jpg"} 
               alt="Profile" 
-              className="profile-pic" 
+              className="profile-pic"
+              style={{ objectFit: 'cover' }}
+              onError={(e) => {
+                console.error('Error loading navbar profile image, falling back to default');
+                (e.target as HTMLImageElement).src = '/default.jpg';
+              }}
             />
             <div className="dropdown-content">
               <Link to="/profile">Profile</Link>

@@ -224,7 +224,17 @@ const MovieDetails = () => {
                 <p>{movie.Overview || 'No overview available.'}</p>
               </div>
               
-              <div className="movie-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: '20px', marginBottom: '10px' }}>
+              <div className="movie-actions" style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'flex-end', 
+                marginTop: 'auto',
+                marginBottom: '10px',
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: '100%'
+              }}>
                 {isAuthenticated ? (
                   <>
                     {isInList ? (

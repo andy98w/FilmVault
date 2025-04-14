@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from './Toast';
 
 interface Movie {
   MovieID: number;
@@ -20,12 +19,11 @@ interface MovieListItemProps {
 
 const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
   const navigate = useNavigate();
-  const { addToast } = useToast();
   
-  // Convert 1-5 scale to 0-100 scale for the slider
-  const initialRatingValue = movie.Rating ? Math.round(movie.Rating * 20) : 0;
+  // Rating is already 0-100 scale in the database
+  // We can use it directly without conversion
+  const initialRatingValue = movie.Rating || 0;
   const [ratingValue, setRatingValue] = useState<number>(initialRatingValue);
-  const [isAdjusting, setIsAdjusting] = useState(false);
   
   const posterUrl = movie.PosterPath 
     ? `https://image.tmdb.org/t/p/w200${movie.PosterPath}` 
@@ -49,19 +47,26 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
     setRatingValue(newValue);
   };
   
-  const handleRatingComplete = () => {
+  const handleRatingComplete = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>) => {
     setIsSliderInteraction(true); // Mark this as a slider interaction
     
     if (onRate) {
-      // Convert from 0-100 scale to 1-5 scale for API
-      const scaledRating = Math.max(1, Math.round(ratingValue / 20));
+      // Get the CURRENT slider value directly from the element
+      // This ensures we get the latest value even if state hasn't updated yet
+      const currentValue = parseInt((e.target as HTMLInputElement).value, 10);
+      
+      // Round to nearest 5 to make ratings more predictable
+      const roundedValue = Math.round(currentValue / 5) * 5;
+      
+      // Set the UI state to match what we'll send
+      setRatingValue(roundedValue);
       
       // Only call API if the rating actually changed
-      if (scaledRating !== movie.Rating) {
-        onRate(movie.MovieID, scaledRating);
+      if (roundedValue !== movie.Rating) {
+        // Use the SAME rounded value for both display and API
+        onRate(movie.MovieID, roundedValue);
       }
     }
-    setIsAdjusting(false);
   };
   
   // Handle direct star click
@@ -69,17 +74,16 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
     // Stop propagation to prevent the area click handler from also firing
     e.stopPropagation();
     
-    // Set rating based on which star was clicked (0-4 index to 0-100 scale)
+    // Calculate rating based on which star was clicked (0-4 index to 0-100 scale)
     const newRating = (starIndex + 1) * 20;
+    
+    // Update the UI state
     setRatingValue(newRating);
     
-    // Apply the rating immediately
-    const scaledRating = starIndex + 1; // 1-5 scale for API
-    if (onRate && scaledRating !== movie.Rating) {
-      onRate(movie.MovieID, scaledRating);
-      
-      // Toast notification is handled by the parent component (MyMovies)
-      // to avoid duplicate notifications
+    // Only call API if the rating actually changed
+    if (onRate && newRating !== movie.Rating) {
+      // Send the exact same value we display in the UI
+      onRate(movie.MovieID, newRating);
     }
   };
   
@@ -94,37 +98,65 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
     const starPercentage = displayRating / 100 * 5;
     
     for (let i = 0; i < 5; i++) {
+      // Calculate fill percentage more precisely
       const fillPercentage = Math.min(Math.max(starPercentage - i, 0), 1) * 100;
       stars.push(
         <span 
           key={i}
           className="star-container"
-          style={{ position: 'relative', display: 'inline-block', width: '20px', height: '20px' }}
+          style={{ 
+            position: 'relative', 
+            display: 'inline-block',
+            width: '20px', 
+            height: '25px',
+            fontSize: '22px',
+            lineHeight: '25px',
+            textAlign: 'center'
+          }}
           onClick={(e) => handleStarClick(e, i)}
           onMouseEnter={() => setHoverRating((i + 1) * 20)}
           onMouseLeave={() => setHoverRating(null)}
           title={`Rate ${(i+1)*20}/100`}
         >
-          <span className="star-outline" style={{ 
-            color: '#ccc', 
-            position: 'absolute',
-            top: 0,
-            left: 0
-          }}>★</span>
-          <span 
-            className="star-fill" 
-            style={{ 
-              color: 'gold', 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: `${fillPercentage}%`,
-              overflow: 'hidden',
-              transition: 'width 0.15s ease-in-out'
-            }}
-          >
-            ★
-          </span>
+          <div style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: '100%', 
+            height: '100%', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center' 
+          }}>
+            <span 
+              className="star-outline" 
+              style={{ 
+                color: '#ccc',
+                position: 'absolute',
+                fontSize: '22px'
+              }}
+            >
+              ★
+            </span>
+            
+            <span 
+              className="star-fill" 
+              style={{ 
+                color: 'gold',
+                position: 'absolute',
+                fontSize: '22px',
+                width: `${fillPercentage}%`,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                direction: 'ltr',
+                textAlign: 'center',
+                clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
+                transition: 'all 0.15s ease-in-out'
+              }}
+            >
+              ★
+            </span>
+          </div>
         </span>
       );
     }
@@ -137,8 +169,15 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const width = rect.width;
     const position = e.clientX - rect.left;
+    
+    // Calculate position as percentage of total width (0-100)
     const percentage = Math.max(0, Math.min(100, Math.round((position / width) * 100)));
-    setHoverRating(percentage);
+    
+    // Round to nearest 5 to make ratings more predictable
+    const roundedPercentage = Math.round(percentage / 5) * 5;
+    
+      
+    setHoverRating(roundedPercentage);
   };
   
   const handleStarAreaMouseLeave = () => {
@@ -148,6 +187,7 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
   // Flag to track if we're handling a slider event
   const [isSliderInteraction, setIsSliderInteraction] = useState(false);
   
+  // Create a new approach for star area clicks that's precise and predictable
   const handleStarAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Skip if this is coming from slider interaction
     if (isSliderInteraction) {
@@ -155,19 +195,25 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
       return;
     }
     
+    // Get the dimensions of the star area
     const rect = e.currentTarget.getBoundingClientRect();
     const width = rect.width;
     const position = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, Math.round((position / width) * 100)));
-    setRatingValue(percentage);
     
-    // Apply the rating immediately
-    const scaledRating = Math.max(1, Math.min(5, Math.ceil(percentage / 20)));
-    if (onRate && scaledRating !== movie.Rating) {
-      onRate(movie.MovieID, scaledRating);
-      
-      // Toast notification is handled by the parent component (MyMovies)
-      // to avoid duplicate notifications
+    // Calculate position as percentage of total width (0-100)
+    const percentage = Math.max(0, Math.min(100, Math.round((position / width) * 100)));
+    
+    // Round to nearest 5 to make ratings more predictable
+    const roundedPercentage = Math.round(percentage / 5) * 5;
+    
+    // Update the UI state
+    setRatingValue(roundedPercentage);
+    
+    // Send the EXACT SAME VALUE that we display
+    // This ensures the UI and server values are always in sync
+    if (onRate && roundedPercentage !== movie.Rating) {
+      // Save the exact same value we're displaying
+      onRate(movie.MovieID, roundedPercentage);
     }
   };
   
@@ -232,6 +278,15 @@ const MovieListItem = ({ movie, onRemove, onRate }: MovieListItemProps) => {
               onTouchEnd={handleRatingComplete}
               onBlur={handleRatingComplete}
               aria-label="Rating slider"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0,
+                cursor: 'pointer'
+              }}
             />
           </div>
           <div className="rating-value">{hoverRating !== null ? hoverRating : ratingValue}/100</div>

@@ -35,15 +35,16 @@ export const removeFromUserList = (movieId: number | string) => {
 };
 
 export const rateMovie = (movieId: number | string, rating: number) => {
-  return axiosInstance.post(`/api/movies/rate`, { movie_id: movieId, rating });
+  // Ensure the rating is an integer between 0 and 100
+  const validRating = Math.max(0, Math.min(100, Math.round(rating)));
+  
+  return axiosInstance.post(`/api/movies/rate`, { movie_id: movieId, rating: validRating });
 };
 
-// Use top-rated instead of trending since there's no trending endpoint in the API
 export const getTrending = () => {
   return axiosInstance.get(`/api/movies/top-rated`);
 };
 
-// Use top since there's no popular endpoint in the API
 export const getPopular = () => {
   return axiosInstance.get(`/api/movies/top`);
 };

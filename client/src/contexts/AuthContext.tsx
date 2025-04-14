@@ -2,8 +2,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import api from '../api/config';
 
 // Determine environment settings
-const isProduction = process.env.NODE_ENV === 'production';
-const useJwtToken = process.env.REACT_APP_USE_JWT === 'true';
 
 interface User {
   id: number;
@@ -46,35 +44,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     // Authentication check on app initialization
     const checkAuthentication = async () => {
-      console.log(`Authentication check started (${isProduction ? 'production' : 'development'})`);
       try {
         // Check for token in localStorage
         const token = localStorage.getItem('token');
-        console.log(`Token in localStorage: ${token ? 'Present' : 'Not found'}`);
-        
         if (token) {
-          // Try token-based authentication first regardless of environment
-          console.log('Using JWT token for authentication');
-          
           try {
             // Try to authenticate with the token
             await fetchUserData(token);
-            console.log('Token authentication successful');
             return; // Exit if token auth successful
           } catch (tokenErr) {
             // If token authentication fails, clear it and try cookie-based auth
-            console.log('Token authentication failed:', tokenErr);
             localStorage.removeItem('token');
           }
         }
         
         // Try cookie-based authentication if no token or token auth failed
-        console.log('Falling back to cookie-based authentication');
         try {
           await fetchUserData();
-          console.log('Cookie authentication successful');
         } catch (cookieErr) {
-          console.log('Cookie authentication failed');
           setLoading(false);
         }
       } catch (err) {
@@ -102,9 +89,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Add token to headers if provided
       if (token) {
         config.headers = { Authorization: `Bearer ${token}` };
-        console.log('Using provided token for authentication');
-      } else {
-        console.log('No token provided, using cookie authentication');
       }
       
       // Make the API request
@@ -120,7 +104,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (profilePic.includes('localhost:5001')) {
           fixedProfilePic = profilePic.replace('http://localhost:5001', 
             process.env.NODE_ENV === 'production' ? 'https://filmvault.space' : window.location.origin);
-          console.log('Fixed profile pic URL:', fixedProfilePic);
         }
       }
       
@@ -145,25 +128,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Attempting login...');
-      
       // Make login request with credentials for cookie support
       const response = await api.post('/api/auth/login', 
         { email, password },
         { withCredentials: true }
       );
       
-      console.log('Login response received');
-      
       // Always save token to localStorage for all environments
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        console.log('JWT token saved to localStorage');
         
         // Set Authorization header for current session
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      } else {
-        console.warn('No token received in login response');
       }
       
       // Set user data from the response
@@ -177,7 +153,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (profilePic.includes('localhost:5001')) {
             fixedProfilePic = profilePic.replace('http://localhost:5001', 
               process.env.NODE_ENV === 'production' ? 'https://filmvault.space' : window.location.origin);
-            console.log('Fixed profile pic URL in login response:', fixedProfilePic);
           }
         }
         
@@ -210,16 +185,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Attempting to register user');
-      
       // Explicitly set withCredentials
       await api.post(
         '/api/auth/register', 
         { username, email, password },
         { withCredentials: true }
       );
-      
-      console.log('Registration successful');
     } catch (err: any) {
       console.error('Registration error:', err.response?.data || err.message);
       setError(err.response?.data?.message || 'Failed to register');
@@ -231,32 +202,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      console.log('Logging out...');
-      
       // Try server-side logout to clear cookies
       try {
         await api.post('/api/auth/logout', {}, { withCredentials: true });
-        console.log('Server-side logout successful');
       } catch (error) {
-        console.error('Server-side logout failed:', error);
         // Continue with client-side logout even if server logout fails
       }
       
       // Always perform client-side logout
       // 1. Clear localStorage token
       localStorage.removeItem('token');
-      console.log('Token removed from localStorage');
       
       // 2. Clear Authorization header
       if (api.defaults.headers.common['Authorization']) {
         delete api.defaults.headers.common['Authorization'];
-        console.log('Authorization header removed from API client');
       }
       
       // 3. Reset user state
       setUser(null);
-      
-      console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
       // Still reset state in case of any errors

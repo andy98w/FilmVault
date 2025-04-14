@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import MovieListItem from '../components/MovieListItem';
 import Pagination from '../components/Pagination';
 import { ToastContainer, useToast } from '../components/Toast';
@@ -13,14 +12,11 @@ interface Movie {
   Rating?: number;
   ReleaseDate?: string;
   media_type?: string;
-  // Using a string ISO date format for sorting
   DateAdded?: string;
-  // Ensure we have a unique ID to prevent duplicates
   id?: number;
 }
 
 const MyMovies = () => {
-  const { user } = useAuth();
   const [userMovies, setUserMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +30,7 @@ const MyMovies = () => {
 
   useEffect(() => {
     fetchUserMovies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reset to first page when search query changes
@@ -60,7 +57,6 @@ const MyMovies = () => {
       const uniqueMovies = Array.from(moviesMap.values());
       setUserMovies(uniqueMovies);
     } catch (err) {
-      console.error('Error fetching user movies:', err);
       addToast('Failed to load your collection. Please try again later.', 'error');
     } finally {
       setLoading(false);
@@ -75,26 +71,28 @@ const MyMovies = () => {
       // Show toast notification
       addToast('Item removed from your collection', 'success');
     } catch (err) {
-      console.error('Error removing movie:', err);
       addToast('Failed to remove item. Please try again.', 'error');
     }
   };
 
   const handleRateMovie = async (movieId: number, rating: number) => {
     try {
-      await rateMovie(movieId, rating);
+      // Call the API with the exact rating value passed by the component
+      const response = await rateMovie(movieId, rating);
       
-      // Update the local state with the new rating
+      // Get the actual rating value returned by the server, if available
+      const serverRating = response?.data?.rating || rating;
+      
+      // Update the local state with the server's returned rating (or our original if not available)
       setUserMovies(prevMovies => 
         prevMovies.map(movie => 
-          movie.MovieID === movieId ? { ...movie, Rating: rating } : movie
+          movie.MovieID === movieId ? { ...movie, Rating: serverRating } : movie
         )
       );
       
       // Show toast notification
       addToast('Rating updated successfully', 'success');
     } catch (err) {
-      console.error('Error rating movie:', err);
       addToast('Failed to update rating. Please try again.', 'error');
     }
   };
@@ -177,6 +175,7 @@ const MyMovies = () => {
     
     // Then sort
     return sortMovies(filtered);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userMovies, searchQuery, sortField, sortDirection]);
 
   const paginatedMovies = useMemo(() => {

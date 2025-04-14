@@ -88,6 +88,7 @@ const UserProfile = () => {
       : userMovies;
     
     return sortMovies(filtered);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userMovies, searchQuery, sortField, sortDirection]);
 
   useEffect(() => {

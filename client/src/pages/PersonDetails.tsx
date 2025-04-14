@@ -74,10 +74,6 @@ const PersonDetails = () => {
     return age;
   };
   
-  const extractYearFromDate = (dateString: string | null) => {
-    if (!dateString) return '';
-    return new Date(dateString).getFullYear();
-  };
   
   if (loading) {
     return (

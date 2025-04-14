@@ -24,7 +24,7 @@ const router = express_1.default.Router();
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const IS_DEV = process.env.NODE_ENV !== 'production';
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true' || false;
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 // Log API key status securely
 if (!TMDB_API_KEY) {
     console.error('ERROR: TMDB_API_KEY environment variable is missing! Set this in your .env file to use TMDB API.');
@@ -127,7 +127,6 @@ router.get('/top', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 is_mock: true
             });
         }
-        console.log(`Making API request to: ${TMDB_API_URL}/movie/popular`);
         try {
             // Add a timeout to prevent long-hanging requests in development
             const axiosConfig = {
@@ -139,13 +138,10 @@ router.get('/top', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 timeout: IS_DEV ? 5000 : 10000 // Shorter timeout in development
             };
             const response = yield axios_1.default.get(`${TMDB_API_URL}/movie/popular`, axiosConfig);
-            console.log('TMDB API response status:', response.status);
             if (!response.data || !response.data.results) {
-                console.error('Invalid TMDB API response format:', response.data);
                 throw new Error('Invalid TMDB API response format');
             }
             const movies = response.data.results.map(mapTMDBMovie);
-            console.log(`Successfully mapped ${movies.length} movies`);
             // Return pagination info along with the movies
             res.json({
                 results: movies,
@@ -197,7 +193,6 @@ router.get('/top-tv', (req, res) => __awaiter(void 0, void 0, void 0, function* 
             });
         }
         const page = req.query.page ? Number(req.query.page) : 1;
-        console.log(`Making API request to: ${TMDB_API_URL}/tv/popular with page ${page}`);
         const response = yield axios_1.default.get(`${TMDB_API_URL}/tv/popular`, {
             params: {
                 api_key: TMDB_API_KEY,
@@ -205,7 +200,6 @@ router.get('/top-tv', (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 page: page
             }
         });
-        console.log(`Got ${response.data.results.length} TV shows from TMDB`);
         const tvShows = response.data.results.map((show) => ({
             MovieID: show.id,
             Title: show.name,
@@ -239,7 +233,6 @@ router.get('/top-rated', (req, res) => __awaiter(void 0, void 0, void 0, functio
             });
         }
         const page = req.query.page ? Number(req.query.page) : 1;
-        console.log(`Making API request to: ${TMDB_API_URL}/movie/top_rated with page ${page}`);
         const response = yield axios_1.default.get(`${TMDB_API_URL}/movie/top_rated`, {
             params: {
                 api_key: TMDB_API_KEY,
@@ -247,7 +240,6 @@ router.get('/top-rated', (req, res) => __awaiter(void 0, void 0, void 0, functio
                 page: page
             }
         });
-        console.log(`Got ${response.data.results.length} top rated movies from TMDB`);
         const movies = response.data.results.map(mapTMDBMovie);
         res.json({
             results: movies,
@@ -273,7 +265,6 @@ router.get('/popular-people', (req, res) => __awaiter(void 0, void 0, void 0, fu
             });
         }
         const page = req.query.page ? Number(req.query.page) : 1;
-        console.log(`Making API request to: ${TMDB_API_URL}/person/popular with page ${page}`);
         const response = yield axios_1.default.get(`${TMDB_API_URL}/person/popular`, {
             params: {
                 api_key: TMDB_API_KEY,
@@ -281,7 +272,6 @@ router.get('/popular-people', (req, res) => __awaiter(void 0, void 0, void 0, fu
                 page: page
             }
         });
-        console.log(`Got ${response.data.results.length} popular people from TMDB`);
         const people = response.data.results.map((person) => {
             var _a;
             return ({
@@ -398,7 +388,6 @@ router.get('/search', (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 query: query
             });
         }
-        console.log(`Making search API request for: "${query}" (type: ${type})`);
         let endpoint;
         switch (type) {
             case 'person':
@@ -589,17 +578,39 @@ router.post('/rate', auth_1.authenticateToken, (req, res) => __awaiter(void 0, v
             return res.status(404).json({ message: 'Movie not found in database' });
         }
         const movieDatabaseId = movieRows[0].id;
+        // Process the rating value (0-100 scale)
+        let ratingValue = Math.max(0, Math.min(100, Math.round(Number(rating))));
+        // Check the database schema version to handle transition
+        let usingOldSchema = false;
+        try {
+            const [columnInfo] = yield db_1.default.query('SHOW COLUMNS FROM movie_ratings LIKE "rating"');
+            const columnType = columnInfo[0].Type.toLowerCase();
+            // If the column is still decimal, convert to 0-5 scale temporarily
+            if (columnType.includes('decimal')) {
+                usingOldSchema = true;
+                const oldScaleRating = Math.max(0, Math.min(5, Number(ratingValue) / 20));
+                ratingValue = oldScaleRating;
+            }
+        }
+        catch (schemaError) {
+            console.error('Error checking schema:', schemaError);
+            // Default to new schema if we can't determine
+        }
         // Check if user has already rated this movie
         const [existingRatings] = yield db_1.default.query('SELECT * FROM movie_ratings WHERE user_id = ? AND movie_id = ?', [userId, movieDatabaseId]);
         if (existingRatings.length > 0) {
-            yield db_1.default.query('UPDATE movie_ratings SET rating = ? WHERE user_id = ? AND movie_id = ?', [rating, userId, movieDatabaseId]);
+            yield db_1.default.query('UPDATE movie_ratings SET rating = ? WHERE user_id = ? AND movie_id = ?', [ratingValue, userId, movieDatabaseId]);
         }
         else {
-            yield db_1.default.query('INSERT INTO movie_ratings (user_id, movie_id, rating) VALUES (?, ?, ?)', [userId, movieDatabaseId, rating]);
+            yield db_1.default.query('INSERT INTO movie_ratings (user_id, movie_id, rating) VALUES (?, ?, ?)', [userId, movieDatabaseId, ratingValue]);
         }
-        res.json({ message: 'Movie rated successfully' });
+        res.json({
+            message: 'Movie rated successfully',
+            rating: ratingValue
+        });
     }
     catch (error) {
+        console.error('Error rating movie:', error);
         res.status(500).json({ message: 'Server error' });
     }
 }));
@@ -622,6 +633,7 @@ router.get('/user/list', auth_1.authenticateToken, (req, res) => __awaiter(void 
             PosterPath: movie.poster_path,
             Overview: movie.overview,
             ReleaseDate: movie.release_date,
+            // Rating is already in 0-100 scale, use it directly
             Rating: movie.rating
         }));
         res.json(transformedMovies);

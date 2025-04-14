@@ -24,6 +24,7 @@ const VerifyEmail = () => {
       // Auto-verify if token is in URL
       verifyEmailWithToken(token);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
   const verifyEmailWithToken = async (token: string) => {
@@ -32,7 +33,6 @@ const VerifyEmail = () => {
     setSuccess('');
     
     try {
-      console.log(`Verifying email with token: ${token}`);
       const response = await verifyEmail(token);
       setSuccess(response.data.message);
       

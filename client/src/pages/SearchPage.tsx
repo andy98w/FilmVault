@@ -27,12 +27,6 @@ interface Person {
   }[];
 }
 
-interface SearchResponse {
-  results: any[];
-  page: number;
-  total_pages: number;
-  total_results: number;
-}
 
 const SearchPage = () => {
   const location = useLocation();
@@ -46,8 +40,7 @@ const SearchPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
+  
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const query = searchParams.get('query');
@@ -62,13 +55,7 @@ const SearchPage = () => {
     }
   }, [location.search]);
   
-  // Handle window resize to update layout dynamically
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
+  
   const performSearch = async (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {
     setLoading(true);
     try {

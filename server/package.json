@@ -8,7 +8,8 @@
     "build": "tsc",
     "generate-oci-config": "node scripts/generate-oci-config.js",
     "setup-env": "npm run generate-oci-config",
-    "migrate-linkedin": "ts-node src/linkedin-migration.ts"
+    "migrate-linkedin": "ts-node src/linkedin-migration.ts",
+    "migrate-ratings": "ts-node src/migrate-ratings.ts"
   },
   "keywords": [],
   "author": "",

@@ -13,7 +13,7 @@ const router = express.Router();
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const IS_DEV = process.env.NODE_ENV !== 'production';
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true' || false;
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 
 // Log API key status securely
 if (!TMDB_API_KEY) {
@@ -125,7 +125,6 @@ router.get('/top', async (req, res) => {
       });
     }
     
-    console.log(`Making API request to: ${TMDB_API_URL}/movie/popular`);
     
     try {
       // Add a timeout to prevent long-hanging requests in development
@@ -140,15 +139,11 @@ router.get('/top', async (req, res) => {
       
       const response = await axios.get(`${TMDB_API_URL}/movie/popular`, axiosConfig);
       
-      console.log('TMDB API response status:', response.status);
-      
       if (!response.data || !response.data.results) {
-        console.error('Invalid TMDB API response format:', response.data);
         throw new Error('Invalid TMDB API response format');
       }
       
       const movies = response.data.results.map(mapTMDBMovie);
-      console.log(`Successfully mapped ${movies.length} movies`);
       
       // Return pagination info along with the movies
       res.json({
@@ -202,8 +197,6 @@ router.get('/top-tv', async (req, res) => {
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
-    console.log(`Making API request to: ${TMDB_API_URL}/tv/popular with page ${page}`);
-    
     const response = await axios.get(`${TMDB_API_URL}/tv/popular`, {
       params: {
         api_key: TMDB_API_KEY,
@@ -211,8 +204,6 @@ router.get('/top-tv', async (req, res) => {
         page: page
       }
     });
-    
-    console.log(`Got ${response.data.results.length} TV shows from TMDB`);
     
     const tvShows = response.data.results.map((show: any) => ({
       MovieID: show.id,
@@ -249,7 +240,6 @@ router.get('/top-rated', async (req, res) => {
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
-    console.log(`Making API request to: ${TMDB_API_URL}/movie/top_rated with page ${page}`);
     
     const response = await axios.get(`${TMDB_API_URL}/movie/top_rated`, {
       params: {
@@ -259,7 +249,6 @@ router.get('/top-rated', async (req, res) => {
       }
     });
     
-    console.log(`Got ${response.data.results.length} top rated movies from TMDB`);
     
     const movies = response.data.results.map(mapTMDBMovie);
     
@@ -288,7 +277,6 @@ router.get('/popular-people', async (req, res) => {
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
-    console.log(`Making API request to: ${TMDB_API_URL}/person/popular with page ${page}`);
     
     const response = await axios.get(`${TMDB_API_URL}/person/popular`, {
       params: {
@@ -298,7 +286,6 @@ router.get('/popular-people', async (req, res) => {
       }
     });
     
-    console.log(`Got ${response.data.results.length} popular people from TMDB`);
     
     const people = response.data.results.map((person: any) => ({
       id: person.id,
@@ -425,7 +412,6 @@ router.get('/search', async (req, res) => {
       });
     }
     
-    console.log(`Making search API request for: "${query}" (type: ${type})`);
     
     let endpoint;
     switch(type) {
@@ -652,6 +638,26 @@ router.post('/rate', authenticateToken, async (req, res) => {
     
     const movieDatabaseId = (movieRows as any[])[0].id;
     
+    // Process the rating value (0-100 scale)
+    let ratingValue = Math.max(0, Math.min(100, Math.round(Number(rating))));
+    
+    // Check the database schema version to handle transition
+    let usingOldSchema = false;
+    try {
+      const [columnInfo] = await pool.query('SHOW COLUMNS FROM movie_ratings LIKE "rating"');
+      const columnType = (columnInfo as any[])[0].Type.toLowerCase();
+      
+      // If the column is still decimal, convert to 0-5 scale temporarily
+      if (columnType.includes('decimal')) {
+        usingOldSchema = true;
+        const oldScaleRating = Math.max(0, Math.min(5, Number(ratingValue) / 20));
+        ratingValue = oldScaleRating;
+      }
+    } catch (schemaError) {
+      console.error('Error checking schema:', schemaError);
+      // Default to new schema if we can't determine
+    }
+    
     // Check if user has already rated this movie
     const [existingRatings] = await pool.query(
       'SELECT * FROM movie_ratings WHERE user_id = ? AND movie_id = ?',
@@ -661,17 +667,21 @@ router.post('/rate', authenticateToken, async (req, res) => {
     if ((existingRatings as any[]).length > 0) {
       await pool.query(
         'UPDATE movie_ratings SET rating = ? WHERE user_id = ? AND movie_id = ?',
-        [rating, userId, movieDatabaseId]
+        [ratingValue, userId, movieDatabaseId]
       );
     } else {
       await pool.query(
         'INSERT INTO movie_ratings (user_id, movie_id, rating) VALUES (?, ?, ?)',
-        [userId, movieDatabaseId, rating]
+        [userId, movieDatabaseId, ratingValue]
       );
     }
     
-    res.json({ message: 'Movie rated successfully' });
+    res.json({ 
+      message: 'Movie rated successfully',
+      rating: ratingValue
+    });
   } catch (error) {
+    console.error('Error rating movie:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -700,6 +710,7 @@ router.get('/user/list', authenticateToken, async (req, res) => {
       PosterPath: movie.poster_path,
       Overview: movie.overview,
       ReleaseDate: movie.release_date,
+      // Rating is already in 0-100 scale, use it directly
       Rating: movie.rating
     }));
     

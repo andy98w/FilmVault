@@ -1,9 +1,4 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
-
-import { API_URL } from '../config/config';
 
 interface Movie {
   MovieID: number;
@@ -33,9 +28,6 @@ export const getRatingColorClass = (rating: number): string => {
 };
 
 const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) => {
-  const { isAuthenticated } = useAuth();
-  const [isAdding, setIsAdding] = useState(false);
-  const [message, setMessage] = useState('');
   const navigate = useNavigate();
   
   // Make sure we have a valid movie object
@@ -47,36 +39,6 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
   const posterUrl = movie.PosterPath 
     ? `https://image.tmdb.org/t/p/w500${movie.PosterPath}` 
     : '/default.jpg';
-  
-  const addToList = async () => {
-    if (!isAuthenticated) {
-      navigate('/login?message=Please log in to add movies');
-      return;
-    }
-    
-    setIsAdding(true);
-    try {
-      await axios.post(`${API_URL}/api/movies/add`, {
-        movie_id: movie.MovieID,
-        movie_title: movie.Title,
-        poster_path: movie.PosterPath,
-        overview: movie.Overview
-      }, {
-        withCredentials: true
-      });
-      setMessage('Movie added to your list!');
-    } catch (error: any) {
-      setMessage(error.response?.data?.message || 'Error adding movie');
-    } finally {
-      setIsAdding(false);
-    }
-  };
-  
-  const removeFromList = () => {
-    if (onRemove) {
-      onRemove(movie.MovieID);
-    }
-  };
   
   const handleRate = (rating: number) => {
     if (onRate) {

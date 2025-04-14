@@ -263,20 +263,33 @@ a:hover, a:visited, a:link, a:active {
   padding-bottom: 5px;
 }
 
-.dropdown-content a {
+.dropdown-content a,
+.dropdown-content button.logout-link {
   color: var(--text-color);
   padding: 12px 20px;
   display: block;
   transition: all 0.2s ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   font-weight: 500;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  margin: 0;
+  font-size: 14px;
 }
 
-.dropdown-content a:last-child {
+.dropdown-content a:last-child,
+.dropdown-content button:last-child {
   border-bottom: none;
 }
 
-.dropdown-content a:hover {
+.dropdown-content a:hover,
+.dropdown-content button:hover {
   background-color: rgba(137, 201, 184, 0.1);
   color: var(--primary-color);
 }

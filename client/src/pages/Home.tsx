@@ -68,9 +68,7 @@ const Home = () => {
     // All API requests should go through the backend for security
     const testTMDBAPI = async () => {
       try {
-        console.log('Testing backend API connection...');
-        const response = await axiosInstance.get(`/api/movies/test-connection`);
-        console.log('Backend API connection successful:', response.status);
+        await axiosInstance.get(`/api/movies/test-connection`);
       } catch (err) {
         console.error('Backend API connection failed:', err);
       }

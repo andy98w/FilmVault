@@ -5,11 +5,6 @@ import { getProfilePictureUrl } from '../config/config';
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   
-  // Debug log profile picture
-  if (user?.profilePic) {
-    console.log('Profile pic in Navbar:', user.profilePic);
-    console.log('Profile pic processed:', getProfilePictureUrl(user.profilePic));
-  }
 
   return (
     <nav className="navbar">
@@ -32,10 +27,7 @@ const Navbar = () => {
             <div className="dropdown-content">
               <Link to="/profile">Profile</Link>
               <Link to="/my-movies">My Movies</Link>
-              <a href="#" onClick={(e) => {
-                e.preventDefault();
-                logout();
-              }}>Logout</a>
+              <button onClick={() => logout()} className="logout-link">Logout</button>
             </div>
           </div>
         ) : (

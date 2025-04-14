@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { forgotPassword } from '../api/auth';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -24,7 +21,7 @@ const ForgotPassword = () => {
     setSuccess('');
     
     try {
-      await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
+      await forgotPassword(email);
       setSuccess('Password reset instructions have been sent to your email');
       setEmail('');
     } catch (err: any) {

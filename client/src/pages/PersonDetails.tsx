@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
 import { getRatingColorClass } from '../components/MovieCard';
-
-import { API_URL } from '../config/config';
+import { getPersonDetails } from '../api/movies';
 
 interface KnownForCredit {
   id: number;
@@ -37,9 +35,11 @@ const PersonDetails = () => {
   
   useEffect(() => {
     const fetchPersonDetails = async () => {
+      if (!id) return;
+      
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/movies/person/${id}`);
+        const response = await getPersonDetails(id);
         setPerson(response.data);
       } catch (err) {
         console.error('Error fetching person details:', err);

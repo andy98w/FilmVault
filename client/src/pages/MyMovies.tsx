@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import MovieListItem from '../components/MovieListItem';
 import Pagination from '../components/Pagination';
 import { ToastContainer, useToast } from '../components/Toast';
-
-import { API_URL } from '../config/config';
+import { getUserMovies, removeFromUserList, rateMovie } from '../api/movies';
 
 interface Movie {
   MovieID: number;
@@ -46,9 +44,7 @@ const MyMovies = () => {
   const fetchUserMovies = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/movies/user/list`, {
-        withCredentials: true
-      });
+      const response = await getUserMovies();
       
       // Create a Map to filter out duplicates by MovieID
       const moviesMap = new Map();
@@ -73,11 +69,7 @@ const MyMovies = () => {
 
   const handleRemoveMovie = async (movieId: number) => {
     try {
-      await axios.delete(`${API_URL}/api/movies/remove/${movieId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      await removeFromUserList(movieId);
       setUserMovies(prevMovies => prevMovies.filter(movie => movie.MovieID !== movieId));
       
       // Show toast notification
@@ -90,14 +82,7 @@ const MyMovies = () => {
 
   const handleRateMovie = async (movieId: number, rating: number) => {
     try {
-      await axios.post(`${API_URL}/api/movies/rate`, 
-        { movie_id: movieId, rating },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      await rateMovie(movieId, rating);
       
       // Update the local state with the new rating
       setUserMovies(prevMovies => 

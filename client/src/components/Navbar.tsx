@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getProfilePictureUrl } from '../config/config';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  
+  // Debug log profile picture
+  if (user?.profilePic) {
+    console.log('Profile pic in Navbar:', user.profilePic);
+    console.log('Profile pic processed:', getProfilePictureUrl(user.profilePic));
+  }
 
   return (
     <nav className="navbar">
@@ -13,7 +20,7 @@ const Navbar = () => {
         {isAuthenticated ? (
           <div className="profile-dropdown">
             <img 
-              src={user?.profilePic || "/default.jpg"} 
+              src={getProfilePictureUrl(user?.profilePic)}
               alt="Profile" 
               className="profile-pic"
               style={{ objectFit: 'cover' }}

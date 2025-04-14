@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { verifyEmail } from '../api/auth';
 
 const VerifyEmail = () => {
   const [loading, setLoading] = useState(false);
@@ -36,7 +33,7 @@ const VerifyEmail = () => {
     
     try {
       console.log(`Verifying email with token: ${token}`);
-      const response = await axios.post(`${API_URL}/api/auth/verify-email`, { token });
+      const response = await verifyEmail(token);
       setSuccess(response.data.message);
       
       // Redirect to login after 3 seconds

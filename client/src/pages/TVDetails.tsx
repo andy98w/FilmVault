@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { getRatingColorClass } from '../components/MovieCard';
-
-import { API_URL } from '../config/config';
+import { getTVDetails, getUserMovies, addToUserList, removeFromUserList } from '../api/movies';
 
 interface CastMember {
   id: number;
@@ -50,15 +48,13 @@ const TVDetails = () => {
     const fetchTVDetails = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/movies/details/${id}?type=tv`);
+        const response = await getTVDetails(id!);
         setShow(response.data);
         
         // If user is authenticated, check if show is in their list
         if (isAuthenticated) {
           try {
-            const userMoviesResponse = await axios.get(`${API_URL}/api/movies/user/list`, {
-              withCredentials: true
-            });
+            const userMoviesResponse = await getUserMovies();
             
             // Check if this show is in user's list
             const inList = userMoviesResponse.data.some(
@@ -85,13 +81,11 @@ const TVDetails = () => {
     
     setIsAdding(true);
     try {
-      await axios.post(`${API_URL}/api/movies/add`, {
+      await addToUserList({
         movie_id: show.MovieID,
         movie_title: show.Title,
         poster_path: show.PosterPath,
         overview: show.Overview
-      }, {
-        withCredentials: true
       });
       
       setMessage('TV show added to your list!');
@@ -115,9 +109,7 @@ const TVDetails = () => {
     if (!isAuthenticated || !show) return;
     
     try {
-      await axios.delete(`${API_URL}/api/movies/remove/${show.MovieID}`, {
-        withCredentials: true
-      });
+      await removeFromUserList(show.MovieID);
       
       setMessage('TV show removed from your list');
       setMessageType('success');

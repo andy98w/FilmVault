@@ -110,12 +110,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Make the API request
       const response = await api.get('/api/users/me', config);
       
-      // Update user state with response data
+      // Update user state with response data and ensure profile pic has correct URL
+      const profilePic = response.data.ProfilePic;
+      
+      // Fix profile picture URL if it's a relative path from localhost
+      let fixedProfilePic = profilePic;
+      if (profilePic && !profilePic.startsWith('http')) {
+        // Check if the URL contains localhost, which needs to be replaced in production
+        if (profilePic.includes('localhost:5001')) {
+          fixedProfilePic = profilePic.replace('http://localhost:5001', 
+            process.env.NODE_ENV === 'production' ? 'https://filmvault.space' : window.location.origin);
+          console.log('Fixed profile pic URL:', fixedProfilePic);
+        }
+      }
+      
       setUser({
         id: response.data.id,
         username: response.data.Usernames,
         email: response.data.Emails,
-        profilePic: response.data.ProfilePic,
+        profilePic: fixedProfilePic,
         isAdmin: response.data.is_admin === 1
       });
       
@@ -155,11 +168,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // Set user data from the response
       if (response.data.user) {
+        const profilePic = response.data.user.profilePic;
+        
+        // Fix profile picture URL if it's a relative path from localhost
+        let fixedProfilePic = profilePic;
+        if (profilePic && !profilePic.startsWith('http')) {
+          // Check if the URL contains localhost, which needs to be replaced in production
+          if (profilePic.includes('localhost:5001')) {
+            fixedProfilePic = profilePic.replace('http://localhost:5001', 
+              process.env.NODE_ENV === 'production' ? 'https://filmvault.space' : window.location.origin);
+            console.log('Fixed profile pic URL in login response:', fixedProfilePic);
+          }
+        }
+        
         setUser({
           id: response.data.user.id,
           username: response.data.user.username,
           email: response.data.user.email,
-          profilePic: response.data.user.profilePic,
+          profilePic: fixedProfilePic,
           isAdmin: response.data.user.isAdmin || false
         });
         console.log('User state updated with login response data');

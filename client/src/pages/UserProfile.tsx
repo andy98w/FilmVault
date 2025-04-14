@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { getUserProfile } from '../api/users';
 
 interface User {
   id: number;
@@ -94,15 +92,17 @@ const UserProfile = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
+      if (!id) return;
+      
       setLoading(true);
       setError('');
       
       try {
-        if (currentUser && id && parseInt(id) === currentUser.id) {
+        if (currentUser && parseInt(id) === currentUser.id) {
           return;
         }
         
-        const response = await axios.get(`${API_URL}/api/users/profile/${id}`);
+        const response = await getUserProfile(id);
         
         if (!response.data.user) {
           throw new Error('User data not found in response');

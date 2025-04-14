@@ -326,58 +326,97 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 // Upload profile picture (requires authentication)
 router.post('/upload-profile-picture', authenticateToken, upload.single('profilePicture'), async (req: MulterRequest, res) => {
   try {
+    console.log('Profile picture upload request received');
     const userId = req.user?.id;
     
     if (!userId) {
+      console.log('Upload rejected: User not authenticated');
       return res.status(401).json({ message: 'User not authenticated' });
     }
     
     if (!req.file) {
+      console.log('Upload rejected: No file uploaded');
       return res.status(400).json({ message: 'No file uploaded' });
     }
     
-    const pictureUrl = await storageService.uploadProfilePicture(
-      userId,
-      req.file.buffer,
-      req.file.originalname
-    );
+    console.log(`Processing file upload for user ${userId}, file size: ${req.file.size} bytes`);
+    
+    // Upload the profile picture with error handling
+    let pictureUrl;
+    try {
+      pictureUrl = await storageService.uploadProfilePicture(
+        userId,
+        req.file.buffer,
+        req.file.originalname
+      );
+      console.log(`Profile picture successfully uploaded, URL: ${pictureUrl}`);
+    } catch (uploadError) {
+      console.error('Error during storage service upload:', uploadError);
+      return res.status(500).json({ 
+        message: 'Failed to process image upload',
+        error: uploadError instanceof Error ? uploadError.message : 'Unknown error'
+      });
+    }
     
     // Get user's current profile picture URL
-    const [users] = await pool.query(
-      'SELECT ProfilePic FROM users WHERE id = ?',
-      [userId]
-    );
+    try {
+      const [users] = await pool.query(
+        'SELECT ProfilePic FROM users WHERE id = ?',
+        [userId]
+      );
+      
+      const user = (users as any[])[0];
+      const currentProfilePic = user.ProfilePic;
+      console.log(`Current profile picture: ${currentProfilePic || 'none'}`);
+      
+      // Update user's profile picture in database
+      await pool.query(
+        'UPDATE users SET ProfilePic = ? WHERE id = ?',
+        [pictureUrl, userId]
+      );
+      console.log(`Database updated with new profile picture URL`);
+      
+      // Delete previous profile picture if it exists
+      if (currentProfilePic && 
+          (currentProfilePic.includes('objectstorage') || 
+          currentProfilePic.includes(storageService.getBucketName()))) {
+        try {
+          await storageService.deleteProfilePicture(currentProfilePic);
+          console.log(`Previous profile picture deleted`);
+        } catch (deleteError) {
+          console.error('Error deleting old profile picture:', deleteError);
+          // Continue despite this error
+        }
+      }
+      
+      return res.json({ 
+        message: 'Profile picture uploaded successfully',
+        profilePicUrl: pictureUrl
+      });
+    } catch (dbError) {
+      console.error('Database error during profile picture update:', dbError);
+      return res.status(500).json({ 
+        message: 'Failed to update profile in database',
+        error: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
+    }
+  } catch (error) {
+    console.error('Unexpected error in profile picture upload route:', error);
     
-    const user = (users as any[])[0];
-    const currentProfilePic = user.ProfilePic;
-    
-    // Update user's profile picture in database
-    await pool.query(
-      'UPDATE users SET ProfilePic = ? WHERE id = ?',
-      [pictureUrl, userId]
-    );
-    
-    // Delete previous profile picture if it exists
-    if (currentProfilePic && 
-        (currentProfilePic.includes('objectstorage') || 
-        currentProfilePic.includes(storageService.getBucketName()))) {
-      try {
-        await storageService.deleteProfilePicture(currentProfilePic);
-      } catch (deleteError) {
-        console.error('Error deleting old profile picture:', deleteError);
+    // Add more detailed error logging
+    if (error instanceof Error) {
+      console.error(`Error details: ${error.message}`);
+      console.error(`Error stack: ${error.stack}`);
+      
+      if (error.message.includes('Images Only')) {
+        return res.status(400).json({ message: error.message });
       }
     }
     
-    res.json({ 
-      message: 'Profile picture uploaded successfully',
-      profilePicUrl: pictureUrl
+    return res.status(500).json({ 
+      message: 'Failed to upload profile picture',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Images Only')) {
-      return res.status(400).json({ message: error.message });
-    }
-    console.error('Error uploading profile picture:', error);
-    res.status(500).json({ message: 'Failed to upload profile picture' });
   }
 });
 

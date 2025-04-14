@@ -4,9 +4,9 @@ import axios from 'axios';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Set API URL based on environment
-// For production, we need to use HTTPS if secure cookies are enabled on the server
+// Use domain name instead of IP for production environment
 const apiUrl = process.env.REACT_APP_API_URL || 
-  (isProduction ? 'https://132.145.111.110:3001' : 'http://localhost:5001');
+  (isProduction ? 'https://filmvault.space/api' : 'http://localhost:5001');
 
 console.log(`API client configured for ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 console.log(`Using API URL: ${apiUrl}`);

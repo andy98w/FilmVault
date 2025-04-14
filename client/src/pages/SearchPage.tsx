@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import MovieCard from '../components/MovieCard';
 import PersonCard from '../components/PersonCard';
 import Pagination from '../components/Pagination';
-
-import { API_URL } from '../config/config';
+import { getMovieSearch } from '../api/movies';
 
 interface Movie {
   MovieID: number;
@@ -74,9 +72,7 @@ const SearchPage = () => {
   const performSearch = async (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {
     setLoading(true);
     try {
-      const response = await axios.get<SearchResponse>(
-        `${API_URL}/api/movies/search?query=${encodeURIComponent(query)}&page=${page}&type=${type}`
-      );
+      const response = await getMovieSearch(query, page);
       
       if (type === 'multi') {
         // For multi search, filter results by media type

@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { getRatingColorClass } from '../components/MovieCard';
-
-import { API_URL } from '../config/config';
+import { getMovieDetails, getUserMovies, addToUserList, removeFromUserList } from '../api/movies';
 
 interface CastMember {
   id: number;
@@ -49,15 +47,13 @@ const MovieDetails = () => {
     const fetchMovieDetails = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/movies/details/${id}`);
+        const response = await getMovieDetails(id!);
         setMovie(response.data);
         
         // If user is authenticated, check if movie is in their list
         if (isAuthenticated) {
           try {
-            const userMoviesResponse = await axios.get(`${API_URL}/api/movies/user/list`, {
-              withCredentials: true
-            });
+            const userMoviesResponse = await getUserMovies();
             
             // Check if this movie is in user's list
             const inList = userMoviesResponse.data.some(
@@ -84,13 +80,11 @@ const MovieDetails = () => {
     
     setIsAdding(true);
     try {
-      await axios.post(`${API_URL}/api/movies/add`, {
+      await addToUserList({
         movie_id: movie.MovieID,
         movie_title: movie.Title,
         poster_path: movie.PosterPath,
         overview: movie.Overview
-      }, {
-        withCredentials: true
       });
       
       setMessage('Movie added to your list!');
@@ -114,9 +108,7 @@ const MovieDetails = () => {
     if (!isAuthenticated || !movie) return;
     
     try {
-      await axios.delete(`${API_URL}/api/movies/remove/${movie.MovieID}`, {
-        withCredentials: true
-      });
+      await removeFromUserList(movie.MovieID);
       
       setMessage('Movie removed from your list');
       setMessageType('success');

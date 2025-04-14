@@ -11,10 +11,30 @@ import adminRoutes from './routes/admin';
 import { errorHandler } from './middleware/error';
 
 // Load environment variables based on NODE_ENV
-if (process.env.NODE_ENV === 'production') {
-  dotenv.config({ path: '.env.production' });
+const nodeEnv = process.env.NODE_ENV || 'development';
+console.log(`Running in ${nodeEnv} environment`);
+
+if (nodeEnv === 'production') {
+  // Try to load from absolute path first (for production server deployment)
+  const absolutePath = path.join(__dirname, '../.env.production');
+  if (require('fs').existsSync(absolutePath)) {
+    console.log(`Loading environment from absolute path: ${absolutePath}`);
+    dotenv.config({ path: absolutePath });
+  } else {
+    // Fallback to relative path
+    console.log('Loading environment from relative path: .env.production');
+    dotenv.config({ path: '.env.production' });
+  }
 } else {
-  dotenv.config({ path: '.env.development' });
+  // Development environment
+  const devPath = path.join(__dirname, '../.env.development');
+  if (require('fs').existsSync(devPath)) {
+    console.log(`Loading environment from: ${devPath}`);
+    dotenv.config({ path: devPath });
+  } else {
+    console.log('Loading environment from: .env.development');
+    dotenv.config({ path: '.env.development' });
+  }
 }
 console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`Server URL: ${process.env.SERVER_URL}`);
@@ -22,11 +42,11 @@ console.log(`Client URL: ${process.env.CLIENT_URL}`);
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001; // Default to 3001 to avoid conflicts
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://132.145.111.110', // Explicitly set the client URL
+  origin: process.env.CLIENT_URL || 'https://filmvault.space', // Use domain name instead of IP
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['Set-Cookie'],
@@ -35,10 +55,10 @@ app.use(cors({
 
 // Log CORS settings in detail
 console.log('CORS credentials setting:', true);
-console.log('CORS origin setting:', process.env.CLIENT_URL || 'http://132.145.111.110');
+console.log('CORS origin setting:', process.env.CLIENT_URL || 'https://filmvault.space');
 
 // Log CORS configuration
-console.log('CORS configured with origin:', process.env.CLIENT_URL || 'http://132.145.111.110');
+console.log('CORS configured with origin:', process.env.CLIENT_URL || 'https://filmvault.space');
 app.use(express.json());
 app.use(cookieParser()); // Parse cookies
 
@@ -46,7 +66,8 @@ app.use(cookieParser()); // Parse cookies
 console.log('Cookie parsing enabled');
 console.log('Client URL:', process.env.CLIENT_URL || 'Not set (allowing all origins)');
 
-// Serve profile pictures statically for local development
+// Serve profile pictures statically
+console.log('Serving profile pictures from:', path.join(__dirname, '../profile-pictures'));
 app.use('/profile-pictures', express.static(path.join(__dirname, '../profile-pictures')));
 
 // Log middleware configuration

@@ -1,8 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL } from '../config/config';
+import { getCurrentUser, updateUserProfile, uploadProfilePicture, removeProfilePicture } from '../api/users';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -30,9 +29,7 @@ const Profile = () => {
     const fetchUserProfile = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/api/users/me`, {
-          withCredentials: true
-        });
+        const response = await getCurrentUser();
         
         setProfilePic(response.data.ProfilePic);
         setBiography(response.data.Biography || '');
@@ -87,16 +84,7 @@ const Profile = () => {
       const formData = new FormData();
       formData.append('profilePicture', selectedFile);
       
-      const response = await axios.post(
-        `${API_URL}/api/users/upload-profile-picture`,
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
+      const response = await uploadProfilePicture(formData);
       
       // Add cache-busting parameter
       const profilePicUrl = response.data.profilePicUrl;
@@ -133,9 +121,7 @@ const Profile = () => {
     setMessage('');
     
     try {
-      await axios.delete(`${API_URL}/api/users/remove-profile-picture`, {
-        withCredentials: true
-      });
+      await removeProfilePicture();
       
       setProfilePic(undefined);
       setSelectedFile(null);
@@ -159,18 +145,14 @@ const Profile = () => {
     setMessage('');
     
     try {
-      await axios.put(
-        `${API_URL}/api/users/update`,
-        {
-          biography,
-          facebook_link: facebookLink,
-          instagram_link: instagramLink,
-          youtube_link: youtubeLink,
-          github_link: githubLink,
-          linkedin_link: linkedinLink
-        },
-        { withCredentials: true }
-      );
+      await updateUserProfile({
+        biography,
+        facebook_link: facebookLink,
+        instagram_link: instagramLink,
+        youtube_link: youtubeLink,
+        github_link: githubLink,
+        linkedin_link: linkedinLink
+      });
       
       setMessage('Profile updated successfully');
       setEditMode(false);

@@ -91,8 +91,10 @@ try {
         console.warn(`OCI private key not found at ${ociConfig.key_file}`);
     }
     // Create connection pool
+    const dbHost = process.env.DB_HOST || process.env.DB_NLB_IP || 'localhost';
+    console.log(`Using database host: ${dbHost}`);
     pool = promise_1.default.createPool({
-        host: process.env.DB_HOST || process.env.DB_NLB_IP || 'localhost',
+        host: dbHost,
         user: process.env.DB_USER || '',
         password: process.env.DB_PASSWORD || '',
         database: process.env.DB_NAME || '',

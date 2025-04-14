@@ -25,7 +25,7 @@ DB_USER=${db_user}
 DB_PASSWORD=${db_password}
 DB_NAME=${db_name}
 JWT_SECRET=${jwt_secret}
-PORT=3000
+PORT=${"3001"}
 EOF
 
 # Setup firewall rules

@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-
-// API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import { resetPassword } from '../api/auth';
 
 const ResetPassword = () => {
   const [token, setToken] = useState('');
@@ -62,7 +59,7 @@ const ResetPassword = () => {
     setSuccess('');
     
     try {
-      await axios.post(`${API_URL}/api/auth/reset-password`, { token: tokenToUse, password });
+      await resetPassword(tokenToUse, password);
       setSuccess('Password has been reset successfully');
       
       // Redirect to login after a short delay

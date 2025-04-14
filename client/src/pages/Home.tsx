@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
 import MovieCard from '../components/MovieCard';
 import UserTable from '../components/UserTable';
-
-import { API_URL } from '../config/config';
+import axiosInstance from '../api/config';
 
 interface Movie {
   MovieID: number;
@@ -71,7 +69,7 @@ const Home = () => {
     const testTMDBAPI = async () => {
       try {
         console.log('Testing backend API connection...');
-        const response = await axios.get(`${API_URL}/api/movies/test-connection`);
+        const response = await axiosInstance.get(`/api/movies/test-connection`);
         console.log('Backend API connection successful:', response.status);
       } catch (err) {
         console.error('Backend API connection failed:', err);
@@ -89,7 +87,7 @@ const Home = () => {
         let topMoviesRes;
         try {
           console.log('Fetching top movies...');
-          topMoviesRes = await axios.get(`${API_URL}/api/movies/top`);
+          topMoviesRes = await axiosInstance.get(`/api/movies/top`);
           console.log('Top movies fetched successfully');
         } catch (err) {
           console.error('Failed to fetch top movies:', err);
@@ -99,7 +97,7 @@ const Home = () => {
         let topTVShowsRes;
         try {
           console.log('Fetching top TV shows...');
-          topTVShowsRes = await axios.get(`${API_URL}/api/movies/top-tv`);
+          topTVShowsRes = await axiosInstance.get(`/api/movies/top-tv`);
           console.log('Top TV shows fetched successfully');
         } catch (err) {
           console.error('Failed to fetch top TV shows:', err);
@@ -109,7 +107,7 @@ const Home = () => {
         let userTopMoviesRes;
         try {
           console.log('Fetching top rated movies...');
-          userTopMoviesRes = await axios.get(`${API_URL}/api/movies/top-rated`);
+          userTopMoviesRes = await axiosInstance.get(`/api/movies/top-rated`);
           console.log('Top rated movies fetched successfully');
         } catch (err) {
           console.error('Failed to fetch top rated movies:', err);
@@ -119,7 +117,7 @@ const Home = () => {
         let popularPeopleRes;
         try {
           console.log('Fetching popular people...');
-          popularPeopleRes = await axios.get(`${API_URL}/api/movies/popular-people`);
+          popularPeopleRes = await axiosInstance.get(`/api/movies/popular-people`);
           console.log('Popular people fetched successfully');
         } catch (err) {
           console.error('Failed to fetch popular people:', err);
@@ -129,7 +127,7 @@ const Home = () => {
         let topUsersRes;
         try {
           console.log('Fetching top users...');
-          topUsersRes = await axios.get(`${API_URL}/api/users/top`);
+          topUsersRes = await axiosInstance.get(`/api/users/top`);
           console.log('Top users fetched successfully');
         } catch (err) {
           console.error('Failed to fetch top users:', err);

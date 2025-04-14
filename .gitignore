@@ -184,3 +184,9 @@ client/build/
 
 # Terraform cloud-init files
 server/terraform/scripts/cloud-init.tpl
+
+# Archive files
+*.tar
+*.tar.gz
+*.tgz
+*.zip

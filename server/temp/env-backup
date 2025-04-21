@@ -18,7 +18,7 @@ TMDB_API_KEY=8d577764c95d04282fe610ceecd260c2
 
 # Email Configuration
 FROM_EMAIL="FilmVault <noreply@filmvault.space>"
-SENDGRID_API_KEY=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
+SENDGRID_API_KEY=your_sendgrid_api_key_here
 
 # Development options
 USE_MOCK_DATA=false

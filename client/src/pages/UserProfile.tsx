@@ -112,7 +112,16 @@ const UserProfile = () => {
         setUser(response.data.user);
         
         if (response.data.movies && Array.isArray(response.data.movies)) {
-          setUserMovies(response.data.movies);
+          // Transform movies from snake_case to PascalCase to match the interface
+          const transformedMovies = response.data.movies.map((movie: any) => ({
+            MovieID: movie.tmdb_id, // Use TMDB ID for navigation instead of database ID
+            Title: movie.title,
+            PosterPath: movie.poster_path,
+            Overview: movie.overview,
+            Rating: movie.rating !== null ? parseInt(movie.rating) : null, // Ratings are already on 0-100 scale
+            ReleaseDate: movie.release_date
+          }));
+          setUserMovies(transformedMovies);
         } else {
           setUserMovies([]);
         }
@@ -520,7 +529,7 @@ const UserProfile = () => {
                       fontWeight: 'bold',
                       zIndex: 2
                     }}>
-                      {movie.Rating ? `${movie.Rating * 20}/100` : 'Not yet rated'}
+                      {movie.Rating ? `${movie.Rating}/100` : 'Not yet rated'}
                     </div>
                   </div>
                   
@@ -554,7 +563,7 @@ const UserProfile = () => {
                         <div style={{ color: 'gold', fontSize: '14px' }}>
                           {[...Array(5)].map((_, i) => (
                             <span key={i} style={{ marginRight: '2px' }}>
-                              {i < (movie.Rating || 0) ? '★' : '☆'}
+                              {i < Math.round((movie.Rating || 0) / 20) ? '★' : '☆'}
                             </span>
                           ))}
                         </div>

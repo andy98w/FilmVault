@@ -29,10 +29,14 @@ class StorageService {
         this.bucketName = process.env.OCI_PROFILE_PICTURES_BUCKET || 'filmvault-profile-pictures';
         // The baseUrl is kept for compatibility but not actively used
         this.baseUrl = 'https://filmvault.space/profile-pictures';
-        // PAR URL for direct object access
-        this.parUrl = process.env.OCI_PAR_URL || 'https://objectstorage.ca-toronto-1.oraclecloud.com/p/j760BvPoSbgh7gfqrrAHfcdRpnlyiHgLdXdwhIq5m9MZR48ygD8XcD4N32g6AFZg/n/yzep9haqilyk/b/filmvault-profile-pictures/o/';
-        // Set flags for OCI usage
-        this.useOCI = true;
+        // PAR URL for direct object access - ONLY use environment variable
+        if (!process.env.OCI_PAR_URL) {
+            console.error('OCI_PAR_URL environment variable is not set! Profile picture uploads will not work correctly');
+        }
+        this.parUrl = process.env.OCI_PAR_URL || '';
+        console.log(`Using OCI PAR URL: ${this.parUrl ? '[URL SET]' : '[URL MISSING]'}`);
+        // Set flags for OCI usage based on whether we have a PAR URL
+        this.useOCI = !!process.env.OCI_PAR_URL;
         // Initialize OCI client with a simple configuration
         // In a real implementation, you would use credentials from the environment
         try {
@@ -96,7 +100,7 @@ class StorageService {
                 // Generate a unique object name
                 const objectName = this.generateObjectName(userId, '.jpg');
                 console.log(`Generated object name: ${objectName}`);
-                // Create the full PAR URL for this specific object
+                // Create the full PAR URL for this specific object (for PUT operation)
                 const objectPutUrl = `${this.parUrl}${objectName}`;
                 console.log(`Object PUT URL: ${objectPutUrl}`);
                 try {
@@ -114,19 +118,38 @@ class StorageService {
                         throw new Error(`Failed to upload to OCI: ${uploadResponse.status} ${uploadResponse.statusText}`);
                     }
                     console.log(`Upload successful! Status: ${uploadResponse.status}`);
-                    // Return the object URL that will be used to access the image
-                    return objectPutUrl;
-                }
-                catch (uploadError) {
-                    console.error('Error uploading to OCI:', uploadError);
-                    // Fallback: Save to local temporary directory and return the PAR URL anyway
-                    // This will create a broken image link but won't crash the application
+                    // Create a direct access URL for the uploaded image
+                    // This is the URL that will be used to access the image from the client
+                    // For OCI Object Storage with PAR URL, we remove any tokens or query parameters
+                    // and keep only the base URL
+                    // Extract just the base URL without any query parameters
+                    let accessUrl = objectPutUrl;
+                    if (objectPutUrl.includes('?')) {
+                        accessUrl = objectPutUrl.split('?')[0];
+                    }
+                    console.log(`OCI object access URL: ${accessUrl}`);
+                    // Save to local temporary directory for debugging purposes
                     try {
                         const tempPath = path_1.default.join(this.localStoragePath, objectName);
                         yield fs_2.promises.writeFile(tempPath, processedImage);
                         console.log(`Saved image to temporary location: ${tempPath}`);
-                        console.warn('OCI upload failed, but URL will be returned (image may not display)');
-                        // Return the PAR URL even though the upload failed
+                    }
+                    catch (tempSaveError) {
+                        console.warn(`Failed to save temporary copy: ${tempSaveError}`);
+                        // Continue anyway, as the OCI upload was successful
+                    }
+                    // Return the OCI URL for direct access
+                    return objectPutUrl;
+                }
+                catch (uploadError) {
+                    console.error('Error uploading to OCI:', uploadError);
+                    // Fallback: Save to local temporary directory
+                    try {
+                        const tempPath = path_1.default.join(this.localStoragePath, objectName);
+                        yield fs_2.promises.writeFile(tempPath, processedImage);
+                        console.log(`Saved image to temporary location: ${tempPath}`);
+                        // Return the OCI URL even though the upload failed
+                        // The client will have to handle the error by showing a default image
                         return objectPutUrl;
                     }
                     catch (fallbackError) {
@@ -158,7 +181,7 @@ class StorageService {
                 // 2. Consider the object "deleted" from the application perspective
                 // 3. Clean up orphaned objects separately with a background job or admin task
                 console.log(`Object ${objectName} marked for deletion`);
-                // Clean up any local temporary files if they exist
+                // Clean up any temporary files if they exist
                 try {
                     const tempPath = path_1.default.join(this.localStoragePath, objectName);
                     if (fs_1.default.existsSync(tempPath)) {
@@ -170,6 +193,10 @@ class StorageService {
                     console.warn(`Failed to delete local temporary file: ${localDeleteError}`);
                     // Continue even if local deletion fails
                 }
+                // Note: We don't actually delete from OCI Object Storage here
+                // as we don't have a PAR URL with delete permissions
+                // This would typically be handled by a background job with appropriate credentials
+                console.log(`No direct deletion from OCI Object Storage - object ${objectName} will remain`);
                 return true;
             }
             catch (error) {
@@ -193,11 +220,24 @@ class StorageService {
             return url;
         }
         try {
-            const urlObj = new URL(url);
-            const pathParts = urlObj.pathname.split('/');
-            return pathParts[pathParts.length - 1];
+            // Check if this is a URL with protocol or a path
+            if (url.startsWith('http')) {
+                const urlObj = new URL(url);
+                const pathParts = urlObj.pathname.split('/');
+                return pathParts[pathParts.length - 1];
+            }
+            else {
+                // Handle relative paths like /profile-pictures/filename.jpg
+                const parts = url.split('/');
+                let objectName = parts[parts.length - 1];
+                if (objectName.includes('?')) {
+                    objectName = objectName.split('?')[0];
+                }
+                return objectName;
+            }
         }
         catch (error) {
+            // Fallback extraction if URL parsing fails
             const parts = url.split('/');
             let objectName = parts[parts.length - 1];
             if (objectName.includes('?')) {

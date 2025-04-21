@@ -15,6 +15,7 @@ import MyMovies from './pages/MyMovies';
 import MovieDetails from './pages/MovieDetails';
 import TVDetails from './pages/TVDetails';
 import PersonDetails from './pages/PersonDetails';
+import AdminUsers from './pages/AdminUsers';
 import PageTransition from './components/PageTransition';
 import LoadingScreen from './components/LoadingScreen';
 import './App.css';
@@ -25,6 +26,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) return <LoadingScreen />;
   
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  
+  if (loading) return <LoadingScreen />;
+  
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isAdmin) return <Navigate to="/" />;
+  
+  return <>{children}</>;
 };
 
 // Wrap page components with transition animation
@@ -66,6 +78,13 @@ function AppContent() {
             <ProtectedRoute>
               <TransitionWrapper component={MyMovies} />
             </ProtectedRoute>
+          } />
+          
+          {/* Admin routes */}
+          <Route path="/admin/users" element={
+            <AdminRoute>
+              <TransitionWrapper component={AdminUsers} />
+            </AdminRoute>
           } />
         </Routes>
       </div>

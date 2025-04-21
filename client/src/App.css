@@ -36,3 +36,106 @@
     transform: rotate(360deg);
   }
 }
+
+/* Admin Pages */
+.admin-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-page h1 {
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+.user-table {
+  background-color: rgba(20, 20, 20, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  margin-top: 20px;
+}
+
+.user-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th, 
+.user-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+.user-table th {
+  background-color: #222;
+  color: #fff;
+  font-weight: bold;
+}
+
+.user-table tr:hover {
+  background-color: rgba(50, 50, 50, 0.5);
+}
+
+.delete-btn,
+.delete-confirm-btn,
+.cancel-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.delete-btn {
+  background-color: #e53935;
+  color: white;
+}
+
+.delete-confirm-btn {
+  background-color: #d32f2f;
+  color: white;
+  margin-right: 8px;
+}
+
+.cancel-btn {
+  background-color: #555;
+  color: white;
+}
+
+.delete-btn:hover,
+.delete-confirm-btn:hover {
+  background-color: #c62828;
+}
+
+.cancel-btn:hover {
+  background-color: #777;
+}
+
+.error-message {
+  background-color: rgba(211, 47, 47, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.info-message {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.admin-badge {
+  background-color: #4CAF50;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  display: inline-block;
+}

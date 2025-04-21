@@ -15,9 +15,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const dns_1 = __importDefault(require("dns"));
+const https_1 = __importDefault(require("https"));
 const db_1 = __importDefault(require("../config/db"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const router = express_1.default.Router();
+// Super simple test ping route
+router.get('/ping', (req, res) => {
+    res.json({
+        pong: true,
+        from: 'auth router',
+        timestamp: new Date().toISOString(),
+        path: req.path,
+        originalUrl: req.originalUrl,
+        baseUrl: req.baseUrl
+    });
+});
+// Simple email test endpoint - no auth required
+router.get('/test-email-simple', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ message: 'Email parameter is required' });
+        }
+        console.log(`SIMPLE TEST: Sending email to ${email}`);
+        // Send email
+        const emailSent = yield email_service_1.default.sendEmail(email, 'FilmVault - Simple Test Email', 'This is a simple test email from FilmVault to verify email delivery is working.', `<div>
+        <h1>FilmVault Simple Test</h1>
+        <p>This email confirms your email delivery is working.</p>
+        <p>Timestamp: ${new Date().toISOString()}</p>
+      </div>`);
+        return res.json({
+            message: emailSent ? 'Test email sent successfully' : 'Failed to send test email',
+            success: emailSent,
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Simple email test error:', error);
+        return res.status(500).json({
+            message: 'Error sending test email',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+}));
 // Simple test endpoints
 router.get('/test-db', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -36,6 +77,147 @@ router.get('/test-db', (req, res) => __awaiter(void 0, void 0, void 0, function*
     catch (error) {
         console.error('Database test error:', error);
         return res.status(500).json({ message: 'Database connection failed', error: error instanceof Error ? error.message : String(error) });
+    }
+}));
+// Simple no-auth test endpoint - accessible to all
+router.get('/test-email-noauth', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Get email parameter
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ message: 'Email parameter is required' });
+        }
+        console.log(`NOAUTH TEST: Attempting to send test email to ${email}`);
+        // Send simple test email
+        const emailSent = yield email_service_1.default.sendEmail(email, 'FilmVault - No Auth Test Email', 'This is a no-auth test email from FilmVault to verify email delivery is working.', `<div>Test Email Content</div>`);
+        return res.json({
+            message: emailSent ? 'Test email sent successfully' : 'Failed to send test email',
+            success: emailSent
+        });
+    }
+    catch (error) {
+        console.error('No-auth test email error:', error);
+        return res.status(500).json({
+            message: 'Error sending test email',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+}));
+// Test email configuration and sending - admin access only
+router.get('/test-email', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        // Extract token from request
+        const token = req.cookies.auth_token || ((_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1]);
+        if (!token) {
+            return res.status(401).json({ message: 'Authentication token is required' });
+        }
+        // Verify token
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ message: 'Server configuration error' });
+        }
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        // Check if user is admin
+        if (!decoded.isAdmin) {
+            return res.status(403).json({ message: 'Admin access required' });
+        }
+        // Get email parameter
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ message: 'Email parameter is required' });
+        }
+        // Get detailed environment info for troubleshooting
+        const envInfo = {
+            node_env: process.env.NODE_ENV,
+            sendgrid_key_exists: !!process.env.SENDGRID_API_KEY,
+            from_email: process.env.FROM_EMAIL || 'noreply@filmvault.space',
+            client_url: process.env.CLIENT_URL || 'http://localhost:3000',
+            network_info: {
+                hostname: require('os').hostname(),
+                has_internet: true, // We'll test this
+                dns_working: true, // We'll test this
+                sendgrid_reachable: true // We'll test this
+            }
+        };
+        // Network connectivity checks
+        // Check if DNS resolution is working
+        try {
+            yield new Promise((resolve, reject) => {
+                dns_1.default.lookup('api.sendgrid.com', (err) => {
+                    if (err) {
+                        envInfo.network_info.dns_working = false;
+                        envInfo.network_info.sendgrid_reachable = false;
+                        reject(err);
+                    }
+                    else {
+                        resolve(true);
+                    }
+                });
+            });
+        }
+        catch (error) {
+            console.error('DNS resolution failed:', error);
+        }
+        // Check if internet is accessible
+        try {
+            yield new Promise((resolve, reject) => {
+                https_1.default.get('https://www.google.com', (res) => {
+                    if (res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302) {
+                        resolve(true);
+                    }
+                    else {
+                        envInfo.network_info.has_internet = false;
+                        reject(new Error(`Status code: ${res.statusCode}`));
+                    }
+                }).on('error', (err) => {
+                    envInfo.network_info.has_internet = false;
+                    reject(err);
+                });
+            });
+        }
+        catch (error) {
+            console.error('Internet connectivity check failed:', error);
+        }
+        // Check if SendGrid is reachable
+        try {
+            yield new Promise((resolve, reject) => {
+                https_1.default.get('https://api.sendgrid.com', (res) => {
+                    if (res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 404) {
+                        // 404 is expected since we're not hitting a valid endpoint
+                        resolve(true);
+                    }
+                    else {
+                        envInfo.network_info.sendgrid_reachable = false;
+                        reject(new Error(`Status code: ${res.statusCode}`));
+                    }
+                }).on('error', (err) => {
+                    envInfo.network_info.sendgrid_reachable = false;
+                    reject(err);
+                });
+            });
+        }
+        catch (error) {
+            console.error('SendGrid connectivity check failed:', error);
+        }
+        // Send test email
+        console.log('Sending test email to:', email);
+        const emailSent = yield email_service_1.default.sendEmail(email, 'FilmVault - Test Email', 'This is a test email from FilmVault to verify email delivery is working.', `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+        <h1 style="color: #89C9B8;">FilmVault Test Email</h1>
+        <p>This is a test email sent from FilmVault to verify email delivery is working.</p>
+        <p>Environment: ${process.env.NODE_ENV}</p>
+        <p>Timestamp: ${new Date().toISOString()}</p>
+      </div>`);
+        return res.json({
+            message: emailSent ? 'Test email sent successfully' : 'Failed to send test email',
+            environment: envInfo
+        });
+    }
+    catch (error) {
+        console.error('Test email error:', error);
+        return res.status(500).json({
+            message: 'Error sending test email',
+            error: error instanceof Error ? error.message : String(error)
+        });
     }
 }));
 // Simple registration test
@@ -122,7 +304,8 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
             return res.status(500).json({ message: 'Failed to create user account' });
         }
         // Create verification URL
-        const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        const verificationUrl = `${clientUrl}/verify-email?token=${verificationToken}`;
         // Log detailed information about the verification process (for debugging)
         console.log('==== User Registration - Verification Information ====');
         console.log(`Username: ${username}`);
@@ -130,37 +313,36 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         console.log(`Verification token: ${verificationToken}`);
         console.log(`Verification URL: ${verificationUrl}`);
         console.log('====================================================');
+        // In development mode, include verification info in the response
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        const devInfo = isDevelopment ? {
+            verification_token: verificationToken,
+            verification_url: verificationUrl,
+            notes: "Development mode: Use this URL to verify your account"
+        } : undefined;
+        // CRITICAL FIX: Complete all database operations before sending email
+        // This prevents the serverless function from terminating before email is sent
+        // Create response data object upfront
+        const responseData = Object.assign({ message: 'User registered successfully. Please check your email for a verification link.' }, (devInfo && { dev_info: devInfo }));
+        // Send response immediately to client
+        res.status(201).json(responseData);
+        // IMPORTANT: Now we can send the email AFTER sending the response
+        // This ensures the response is sent quickly, but the function stays alive long enough
+        // to complete the email sending process
         try {
-            // Send verification email
+            console.log(`[${process.env.NODE_ENV}] Attempting to send verification email to ${email} after response sent`);
             const emailSent = yield email_service_1.default.sendVerificationEmail(email, username, verificationToken);
             if (emailSent) {
-                res.status(201).json({
-                    message: 'User registered successfully. Please check your email for a verification link.',
-                });
+                console.log(`Registration email successfully sent to ${email}`);
             }
             else {
-                // Fallback if email couldn't be sent
-                console.warn('Email sending failed, using fallback method');
-                res.status(201).json({
-                    message: 'User registered successfully. Please verify your email with the link below.',
-                    dev_info: {
-                        note: 'Email delivery failed. Use this information to verify your account',
-                        verification_token: verificationToken,
-                        verification_url: verificationUrl,
-                        instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
-                    }
-                });
+                console.warn(`⚠️ Email sending failed for ${email} - REASON: sendVerificationEmail returned false`);
+                console.warn(`Environment: ${process.env.NODE_ENV}, From: ${process.env.FROM_EMAIL || 'NOT_SET'}`);
             }
         }
-        catch (error) {
-            console.error('Error sending verification email:', error);
-            res.status(201).json({
-                message: 'User registered but there was an issue sending the verification email. Please use the verification token below.',
-                dev_info: {
-                    verification_token: verificationToken,
-                    verification_url: verificationUrl
-                }
-            });
+        catch (emailError) {
+            // Log detailed error information for debugging
+            console.error(`🚨 Exception while sending verification email to ${email}:`, emailError);
         }
     }
     catch (error) {
@@ -254,9 +436,11 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
         // Check if email is verified
         if (!user.email_verified_at) {
+            console.log(`User ${email} attempted to login but email is not verified`);
             return res.status(400).json({
                 message: 'Please verify your email before logging in',
-                needsVerification: true
+                needsVerification: true,
+                email: email
             });
         }
         // Check password
@@ -336,37 +520,43 @@ router.post('/resend-verification', (req, res) => __awaiter(void 0, void 0, void
         console.log(`Verification token: ${verificationToken}`);
         console.log(`Verification URL: ${verificationUrl}`);
         console.log('===========================================');
+        // Create response data objects upfront
+        const productionResponse = {
+            message: 'Verification email has been sent. Please check your email.',
+        };
+        const devResponse = process.env.NODE_ENV === 'development' ? {
+            message: 'Verification email has been sent. Please check your email.',
+            dev_info: {
+                note: 'Development mode: Use this information to verify your account',
+                verification_token: verificationToken,
+                verification_url: verificationUrl,
+                instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
+            }
+        } : productionResponse;
+        // Send response immediately to client
+        if (process.env.NODE_ENV === 'production') {
+            res.json(productionResponse);
+        }
+        else {
+            res.json(devResponse);
+        }
+        // IMPORTANT: Now we can send the email AFTER sending the response
+        // This ensures the response is sent quickly, but the function stays alive long enough
+        // to complete the email sending process
         try {
-            // Send verification email
+            console.log(`[${process.env.NODE_ENV}] Attempting to resend verification email to ${email} after response sent`);
             const emailSent = yield email_service_1.default.sendVerificationEmail(email, user.Usernames, verificationToken);
             if (emailSent) {
-                res.json({
-                    message: 'Verification email has been sent. Please check your email.',
-                });
+                console.log(`Verification email successfully resent to ${email}`);
             }
             else {
-                // Fallback if email couldn't be sent
-                console.warn('Email sending failed, using fallback method');
-                res.json({
-                    message: 'Could not send verification email. Please use the link below to verify your account.',
-                    dev_info: {
-                        note: 'Email delivery failed. Use this information to verify your account',
-                        verification_token: verificationToken,
-                        verification_url: verificationUrl,
-                        instructions: 'Either click the verification URL or copy the token and use it on the verification page.'
-                    }
-                });
+                console.warn(`⚠️ Resend verification email failed for ${email} - REASON: sendVerificationEmail returned false`);
+                console.warn(`Environment: ${process.env.NODE_ENV}, From: ${process.env.FROM_EMAIL || 'NOT_SET'}`);
             }
         }
-        catch (error) {
-            console.error('Error sending verification email:', error);
-            res.json({
-                message: 'Failed to send verification email. Please use the verification link below.',
-                dev_info: {
-                    verification_token: verificationToken,
-                    verification_url: verificationUrl
-                }
-            });
+        catch (emailError) {
+            // Log detailed error information for debugging
+            console.error(`🚨 Exception while resending verification email to ${email}:`, emailError);
         }
     }
     catch (error) {
@@ -413,40 +603,41 @@ router.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, 
         console.log(`Reset token: ${resetToken}`);
         console.log(`Reset URL: ${resetUrl}`);
         console.log('=====================================');
+        // Create standard response 
+        const standardResponse = {
+            message: 'If a user with that email exists, a password reset link has been sent to their email.',
+        };
+        // In development mode, include token for testing
+        const devResponse = process.env.NODE_ENV === 'development' ? Object.assign(Object.assign({}, standardResponse), { dev_info: {
+                note: 'Development mode: Use this information to reset your password',
+                reset_token: resetToken,
+                reset_url: resetUrl,
+                instructions: 'Either click the reset URL or copy the token and use it on the reset password page.'
+            } }) : standardResponse;
+        // Send response immediately
+        if (process.env.NODE_ENV === 'production') {
+            res.json(standardResponse);
+        }
+        else {
+            res.json(devResponse);
+        }
+        // IMPORTANT: Now we can send the email AFTER sending the response
+        // This ensures the response is sent quickly, but the function stays alive long enough
+        // to complete the email sending process
         try {
-            // Send password reset email
+            console.log(`[${process.env.NODE_ENV}] Attempting to send password reset email to ${email} after response sent`);
             const emailSent = yield email_service_1.default.sendPasswordResetEmail(email, resetToken);
             if (emailSent) {
-                // For security reasons, don't reveal whether a user exists or not
-                res.json({
-                    message: 'If a user with that email exists, a password reset link has been sent to their email.',
-                });
+                console.log(`Password reset email successfully sent to ${email}`);
             }
             else {
-                // Fallback if email couldn't be sent, but only in development mode
-                console.warn('Email sending failed, using fallback method');
-                res.json({
-                    message: 'If a user with that email exists, a password reset link has been sent to their email.',
-                    dev_info: {
-                        note: 'Email delivery failed. Use this information to reset your password',
-                        reset_token: resetToken,
-                        reset_url: resetUrl,
-                        instructions: 'Either click the reset URL or copy the token and use it on the reset password page.'
-                    }
-                });
+                console.warn(`⚠️ Password reset email failed for ${email} - REASON: sendPasswordResetEmail returned false`);
+                console.warn(`Environment: ${process.env.NODE_ENV}, From: ${process.env.FROM_EMAIL || 'NOT_SET'}`);
             }
         }
-        catch (error) {
-            console.error('Error sending password reset email:', error);
-            // Don't expose the error details to the client for security reasons
-            res.json({
-                message: 'If a user with that email exists, a password reset link has been sent to their email.',
-                dev_info: {
-                    note: 'Email delivery failed. Use this information to reset your password',
-                    reset_token: resetToken,
-                    reset_url: resetUrl
-                }
-            });
+        catch (emailError) {
+            // Log detailed error information for debugging
+            console.error(`🚨 Exception while sending password reset email to ${email}:`, emailError);
         }
     }
     catch (error) {

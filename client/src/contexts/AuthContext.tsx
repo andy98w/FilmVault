@@ -15,7 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<any>;
   logout: () => void;
   loading: boolean;
   error: string | null;
@@ -96,9 +96,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // Update user state with response data and ensure profile pic has correct URL
       const profilePic = response.data.ProfilePic;
+      console.log("AuthContext: Raw profile pic from API:", profilePic);
       
-      // Fix profile picture URL if it's a relative path from localhost
+      // Use our configured getProfilePictureUrl function to handle URL formatting
       let fixedProfilePic = profilePic;
+      
+      // Additional checks for localhost paths or relative paths
       if (profilePic && !profilePic.startsWith('http')) {
         // Check if the URL contains localhost, which needs to be replaced in production
         if (profilePic.includes('localhost:5001')) {
@@ -107,12 +110,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       }
       
+      // Add cache busting for OCI storage URLs
+      if (profilePic && profilePic.includes('objectstorage.ca-toronto-1.oraclecloud.com')) {
+        console.log("AuthContext: Detected OCI storage URL, applying cache busting");
+        if (!profilePic.includes('?')) {
+          fixedProfilePic = `${profilePic}?v=${Date.now()}`;
+        } else if (!profilePic.includes('v=')) {
+          fixedProfilePic = `${profilePic}&v=${Date.now()}`;
+        }
+      }
+      
+      const isAdmin = response.data.is_admin === 1;
+      
+      // Log admin status for debugging
+      console.log('Admin status in response:', response.data.is_admin);
+      console.log('Is user admin:', isAdmin);
+      
       setUser({
         id: response.data.id,
         username: response.data.Usernames,
         email: response.data.Emails,
         profilePic: fixedProfilePic,
-        isAdmin: response.data.is_admin === 1
+        isAdmin: isAdmin
       });
       
       console.log('User data fetched successfully');
@@ -145,9 +164,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Set user data from the response
       if (response.data.user) {
         const profilePic = response.data.user.profilePic;
+        console.log("AuthContext: Raw profile pic from login response:", profilePic);
         
-        // Fix profile picture URL if it's a relative path from localhost
+        // Fix profile picture URL and ensure cache busting for OCI URLs
         let fixedProfilePic = profilePic;
+        
         if (profilePic && !profilePic.startsWith('http')) {
           // Check if the URL contains localhost, which needs to be replaced in production
           if (profilePic.includes('localhost:5001')) {
@@ -156,12 +177,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
         }
         
+        // Add cache busting for OCI storage URLs
+        if (profilePic && profilePic.includes('objectstorage.ca-toronto-1.oraclecloud.com')) {
+          console.log("AuthContext: Detected OCI storage URL in login response, applying cache busting");
+          if (!profilePic.includes('?')) {
+            fixedProfilePic = `${profilePic}?v=${Date.now()}`;
+          } else if (!profilePic.includes('v=')) {
+            fixedProfilePic = `${profilePic}&v=${Date.now()}`;
+          }
+        }
+        
+        // Check both snake_case and camelCase properties for admin status
+        const isAdmin = response.data.user.isAdmin || 
+                         response.data.user.is_admin === 1 || 
+                         false;
+                         
+        console.log('Login response admin status:', {
+          isAdmin: response.data.user.isAdmin,
+          is_admin: response.data.user.is_admin,
+          calculated: isAdmin
+        });
+        
         setUser({
           id: response.data.user.id,
           username: response.data.user.username,
           email: response.data.user.email,
           profilePic: fixedProfilePic,
-          isAdmin: response.data.user.isAdmin || false
+          isAdmin: isAdmin
         });
         console.log('User state updated with login response data');
       } else {
@@ -174,8 +216,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log('Login process completed successfully');
     } catch (err: any) {
       console.error('Login error:', err.response?.data?.message || err.message);
-      setError(err.response?.data?.message || 'Failed to login');
-      throw err;
+      
+      // Check if this is a "needs verification" error
+      if (err.response?.data?.needsVerification) {
+        // Pass through the needsVerification flag to the login component
+        const error = new Error(err.response?.data?.message || 'Email not verified');
+        (error as any).response = { 
+          data: { 
+            message: err.response.data.message, 
+            needsVerification: true 
+          } 
+        };
+        setError('Please verify your email before logging in');
+        throw error;
+      } else {
+        // Regular login error
+        setError(err.response?.data?.message || 'Failed to login');
+        throw err;
+      }
     } finally {
       setLoading(false);
     }
@@ -186,11 +244,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setError(null);
     try {
       // Explicitly set withCredentials
-      await api.post(
+      const response = await api.post(
         '/api/auth/register', 
         { username, email, password },
         { withCredentials: true }
       );
+      
+      // Return the response so components can access verification info if needed
+      return response;
     } catch (err: any) {
       console.error('Registration error:', err.response?.data || err.message);
       setError(err.response?.data?.message || 'Failed to register');

@@ -2013,6 +2013,111 @@ h2::after {
   color: var(--primary-color);
 }
 
+.verification-info {
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 20px;
+  border-radius: var(--border-radius-md);
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verification-info p {
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.verification-info strong {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.resend-button {
+  background-color: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  padding: 10px 15px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 20px;
+  width: auto;
+}
+
+.resend-button:hover {
+  background-color: rgba(137, 201, 184, 0.1);
+}
+
+.resend-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-links {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.forgot {
+  color: var(--primary-color);
+  text-align: right;
+  display: block;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.forgot:hover {
+  text-decoration: underline;
+}
+
+.verification-link {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.verification-url {
+  display: inline-block;
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+  padding: 12px 30px;
+  border-radius: var(--border-radius-md);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.verification-url:hover {
+  background-color: #7ab3a3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.verification-small {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-top: 15px;
+}
+
+.token-container {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.verification-token {
+  display: inline-block;
+  font-family: monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 0 4px;
+  word-break: break-all;
+  font-size: 16px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
 /* Profile Page */
 .profile-header {
   display: flex;

@@ -14,7 +14,7 @@ const ociKeyPath = process.env.OCI_KEY_FILE || '';
 const objectStorageNamespace = process.env.OCI_OBJECT_STORAGE_NAMESPACE;
 const profilePicturesBucket = process.env.OCI_PROFILE_PICTURES_BUCKET || 'filmvault-profile-pictures';
 const bucketPublicUrl = process.env.OCI_BUCKET_URL || '';
-const parUrl = process.env.OCI_PAR_URL || 'https://objectstorage.ca-toronto-1.oraclecloud.com/p/j760BvPoSbgh7gfqrrAHfcdRpnlyiHgLdXdwhIq5m9MZR48ygD8XcD4N32g6AFZg/n/yzep9haqilyk/b/filmvault-profile-pictures/o/';
+const parUrl = process.env.OCI_PAR_URL || '';
 
 // Export OCI configuration for use in other parts of the application
 export const ociConfig = {

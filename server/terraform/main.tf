@@ -1,12 +1,35 @@
 provider "oci" {
-  tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaywmo3jk7mqebx7aahzj4wyntuoqldc7txwr3bhosj6ta6isgtlca"
-  user_ocid        = "ocid1.user.oc1..aaaaaaaa5zii5jopnr66gd5i3reki4banjn66ery4uanf6eujxqzj64o4peq"
-  fingerprint      = "51:97:01:df:99:0f:e8:36:57:ab:ab:9b:cb:8f:30:78"
-  private_key_path = "/Users/andywu/Documents/andywu47.pem"
+  tenancy_ocid     = var.tenancy_ocid
+  user_ocid        = var.user_ocid
+  fingerprint      = var.fingerprint
+  private_key_path = var.private_key_path
   region           = var.region
 }
 
 # Variables
+variable "tenancy_ocid" {
+  description = "OCID of the OCI tenancy"
+  type        = string
+  sensitive   = true
+}
+
+variable "user_ocid" {
+  description = "OCID of the OCI user"
+  type        = string
+  sensitive   = true
+}
+
+variable "fingerprint" {
+  description = "Fingerprint of the OCI API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "private_key_path" {
+  description = "Path to the OCI private key"
+  type        = string
+}
+
 variable "compartment_id" {
   description = "OCID of the compartment where resources will be created"
   type        = string

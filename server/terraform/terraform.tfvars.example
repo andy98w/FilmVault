@@ -1,0 +1,21 @@
+# OCI Provider Authentication
+tenancy_ocid     = "ocid1.tenancy.oc1..example"
+user_ocid        = "ocid1.user.oc1..example"
+fingerprint      = "xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "ca-toronto-1"
+
+# Resource Configuration
+compartment_id         = "ocid1.compartment.oc1..example"
+db_admin_username      = "admin"
+db_admin_password      = "StrongPassword123!" # Be sure to use a strong, unique password
+db_name                = "myfavmovies"
+ssh_public_key_path    = "~/.ssh/id_rsa.pub"
+
+# Network Configuration
+vcn_cidr_block         = "10.0.0.0/16"
+subnet_cidr_block      = "10.0.1.0/24"
+
+# MySQL Configuration
+mysql_shape            = "MySQL.VM.Standard.E2.1"
+mysql_storage_size_gb  = 50

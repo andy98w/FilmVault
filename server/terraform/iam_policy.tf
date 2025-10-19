@@ -20,10 +20,3 @@ resource "oci_identity_dynamic_group" "compute_dynamic_group" {
   
   matching_rule = "Any {instance.compartment.id = '${var.compartment_id}'}"
 }
-
-# Add a variable for tenancy OCID
-variable "tenancy_ocid" {
-  description = "OCID of the tenancy"
-  type        = string
-  default     = "ocid1.tenancy.oc1..aaaaaaaaywmo3jk7mqebx7aahzj4wyntuoqldc7txwr3bhosj6ta6isgtlca" # Using the value from your main.tf
-}

@@ -16,11 +16,11 @@ dnf update -y
 # Install Node.js 18
 echo "Installing Node.js..."
 curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-dnf install -y nodejs nginx certbot python3-certbot-nginx
+dnf install -y nodejs nginx
 
-# Install MySQL 8.0
+# Install MySQL 8.4 (Oracle Linux 10)
 echo "Installing MySQL..."
-dnf install -y mysql-server
+dnf install -y mysql8.4-server
 
 # Install PM2 globally
 npm install -g pm2 serve
@@ -144,36 +144,11 @@ firewall-cmd --reload
 # Start Nginx
 nginx -t && systemctl enable --now nginx
 
-# SSL Certificate Setup with Let's Encrypt
-%{ if domain_name != "" && email_for_ssl != "" }
-echo "Setting up Let's Encrypt SSL for ${domain_name}..."
-sleep 10  # Wait for DNS to propagate
-
-# Try to get certificate (with retry logic)
-for i in {1..3}; do
-  if certbot --nginx -d ${domain_name} \
-    --non-interactive \
-    --agree-tos \
-    --email ${email_for_ssl} \
-    --redirect; then
-    echo "SSL certificate obtained successfully!"
-    break
-  else
-    echo "Attempt $i failed, waiting 30 seconds..."
-    sleep 30
-  fi
-done
-
-# Set up auto-renewal
-systemctl enable --now certbot-renew.timer
-echo "SSL setup complete! Your site is now accessible at https://${domain_name}"
-%{ else }
-echo "No domain/email configured. Skipping SSL setup."
-echo "Site accessible at: http://$(hostname -I | awk '{print $1}')"
-echo "To add SSL later:"
-echo "  1. Add domain DNS A record pointing to this server"
-echo "  2. Run: sudo certbot --nginx -d yourdomain.com --email your@email.com"
-%{ endif }
+# NOTE: SSL/certbot not available in Oracle Linux 10 default repos
+# For production use, manually install certbot or use a different SSL solution
+echo "Server ready at http://${domain_name}"
+echo "Note: SSL/HTTPS not configured (certbot not available in OL10)"
+echo "For SSL, manually install certbot from EPEL or use OCI Load Balancer with SSL"
 
 # PM2 ecosystem file
 cat > /home/opc/ecosystem.config.js <<'PMCONF'

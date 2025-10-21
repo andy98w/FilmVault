@@ -5,8 +5,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Set API URL based on environment
 // Use domain name instead of IP for production environment
-const apiUrl = process.env.REACT_APP_API_URL || 
-  (isProduction ? 'https://filmvault.space/api' : 'http://localhost:5001');
+// NOTE: Do not include /api suffix - axios baseURL handles this
+const apiUrl = process.env.REACT_APP_API_URL ||
+  (isProduction ? 'https://filmvault.me' : 'http://localhost:5001');
 
 console.log(`API client configured for ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 console.log(`Using API URL: ${apiUrl}`);

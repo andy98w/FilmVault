@@ -37,6 +37,9 @@ try {
   const dbHost = process.env.DB_HOST || process.env.DB_NLB_IP || 'localhost';
   console.log(`Using database host: ${dbHost}`);
   
+  // Only use SSL for remote database connections, not localhost
+  const useSSL = dbHost !== 'localhost' && dbHost !== '127.0.0.1';
+
   pool = mysql.createPool({
     host: dbHost,
     user: process.env.DB_USER || '',
@@ -45,10 +48,12 @@ try {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    ssl: {
-      // Allow self-signed certificates from OCI MySQL
-      rejectUnauthorized: false
-    }
+    ...(useSSL && {
+      ssl: {
+        // Allow self-signed certificates from OCI MySQL
+        rejectUnauthorized: false
+      }
+    })
   });
   
   // Test the connection

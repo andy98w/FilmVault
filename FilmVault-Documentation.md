@@ -432,4 +432,26 @@ Application logs are managed by PM2, with OCI native compute metrics providing b
 - **Website**: https://filmvault.me
 - **API Health**: https://filmvault.me/api/health
 
+### HTTPS Configuration (Completed)
+
+FilmVault is now secured with HTTPS using a free SSL/TLS certificate from ZeroSSL:
+
+**SSL Certificate Details**:
+- Certificate Authority: ZeroSSL (via acme.sh)
+- Domain: filmvault.me
+- Certificate Location: /etc/nginx/ssl/filmvault.me.{crt,key}
+- Automatic Renewal: Configured via acme.sh
+
+**Security Features**:
+- HTTP → HTTPS automatic redirect
+- HTTP/2 enabled
+- TLS 1.2 and TLS 1.3 support
+- HSTS (Strict-Transport-Security) with 1-year max-age
+- Security headers: X-Frame-Options, X-Content-Type-Options
+
+**Network Configuration**:
+- OCI Network Security Group: Port 443 allowed from 0.0.0.0/0
+- Server Firewall (firewalld): HTTPS service enabled
+- Nginx: Listening on ports 80 (HTTP redirect) and 443 (HTTPS)
+
 ---

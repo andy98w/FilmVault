@@ -149,6 +149,51 @@ resource "oci_core_security_list" "mysql_security_list" {
   vcn_id         = oci_core_vcn.mysql_vcn.id
   display_name   = "app-security-list"
 
+  # HTTP from anywhere
+  ingress_security_rules {
+    protocol    = "6" # TCP
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    stateless   = false
+
+    tcp_options {
+      min = 80
+      max = 80
+    }
+
+    description = "HTTP access from anywhere"
+  }
+
+  # HTTPS from anywhere
+  ingress_security_rules {
+    protocol    = "6" # TCP
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    stateless   = false
+
+    tcp_options {
+      min = 443
+      max = 443
+    }
+
+    description = "HTTPS access from anywhere"
+  }
+
+  # SSH from admin IP
+  ingress_security_rules {
+    protocol    = "6" # TCP
+    source      = var.admin_ip_cidr
+    source_type = "CIDR_BLOCK"
+    stateless   = false
+
+    tcp_options {
+      min = 22
+      max = 22
+    }
+
+    description = "SSH access from admin IP"
+  }
+
   egress_security_rules {
     destination      = "0.0.0.0/0"
     destination_type = "CIDR_BLOCK"

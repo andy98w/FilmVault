@@ -2,7 +2,7 @@ resource "oci_core_instance" "filmvault_server" {
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
   compartment_id      = var.compartment_id
   display_name        = "filmvault-server"
-  shape               = "VM.Standard.E2.1.Micro"
+  shape               = "VM.Standard.E2.1"
 
   source_details {
     source_type = "image"
@@ -42,7 +42,7 @@ data "oci_core_images" "app_server_image" {
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
   state = "AVAILABLE"
-  shape = "VM.Standard.E2.1.Micro"
+  shape = "VM.Standard.E2.1"
 }
 
 output "server_public_ip" {

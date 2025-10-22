@@ -23,15 +23,13 @@ echo "Installing MySQL..."
 dnf install -y mysql8.4-server
 
 # Install PM2 globally
-npm install -g pm2 serve
+npm install -g pm2
 
 # Create directories
 mkdir -p /opt/filmvault-server
-mkdir -p /home/opc/filmvault-server/build
 mkdir -p /var/log/filmvault
 
 chown -R opc:opc /opt/filmvault-server
-chown -R opc:opc /home/opc/filmvault-server
 chown -R opc:opc /var/log/filmvault
 
 # Configure MySQL
@@ -104,7 +102,7 @@ http {
 NGINXCONF
 
 # Site configuration with SSL support
-cat > /etc/nginx/conf.d/filmvault.conf <<SITECONF
+cat > /etc/nginx/conf.d/filmvault.conf <<'SITECONF'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -119,11 +117,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # React Frontend
+    # React Frontend - serve static files directly
     location / {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
     }
 
     # Health check
@@ -138,6 +136,7 @@ SITECONF
 # Configure firewalld (minimal)
 systemctl enable --now firewalld
 firewall-cmd --permanent --add-service=http
+firewall-cmd --permanent --add-service=https
 firewall-cmd --permanent --add-service=ssh
 firewall-cmd --reload
 
@@ -166,16 +165,6 @@ module.exports = {
       max_memory_restart: "700M",
       error_file: "/var/log/filmvault/api-error.log",
       out_file: "/var/log/filmvault/api-out.log"
-    },
-    {
-      name: "filmvault-client",
-      script: "serve",
-      args: "-s /home/opc/filmvault-server/build -l 3001",
-      instances: 1,
-      autorestart: true,
-      max_memory_restart: "200M",
-      error_file: "/var/log/filmvault/client-error.log",
-      out_file: "/var/log/filmvault/client-out.log"
     }
   ]
 };
@@ -186,8 +175,8 @@ chown opc:opc /home/opc/ecosystem.config.js
 # Setup PM2 startup
 env PATH=$PATH:/usr/bin pm2 startup systemd -u opc --hp /home/opc
 
-# Create placeholder page
-cat > /home/opc/filmvault-server/build/index.html <<'HTMLEOF'
+# Create placeholder page in nginx root
+cat > /usr/share/nginx/html/index.html <<'HTMLEOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -239,8 +228,6 @@ cat > /home/opc/filmvault-server/build/index.html <<'HTMLEOF'
 </html>
 HTMLEOF
 
-chown -R opc:opc /home/opc/filmvault-server
-
 # Create simple deployment guide
 cat > /home/opc/DEPLOY.md <<'README'
 # FilmVault - Quick Deployment
@@ -259,8 +246,8 @@ pm2 save
 
 ### Deploy Frontend
 ```bash
-scp -r build/* opc@<server-ip>:/home/opc/filmvault-server/build/
-ssh opc@<server-ip> "pm2 restart all"
+scp -r build/* opc@<server-ip>:/tmp/filmvault-client/
+ssh opc@<server-ip> "sudo cp -r /tmp/filmvault-client/* /usr/share/nginx/html/"
 ```
 
 ## Access Your App

@@ -1,3 +1,4 @@
+import './runtime-compat';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -56,6 +57,29 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use('/profile-pictures', express.static(path.join(__dirname, '../profile-pictures')));
+
+const fallbackPalette: Record<number, [string, string]> = {
+  1: ['#29465f', '#d99f6c'], 2: ['#7d8c73', '#e8d8bb'], 3: ['#6e2430', '#d6b56d'],
+  4: ['#28344f', '#c3c8d4'], 5: ['#6a7468', '#c9a77b'], 6: ['#9b4e34', '#e9c46a'],
+};
+const fallbackColors = (id: number) => fallbackPalette[(id % 6) + 1] || fallbackPalette[1];
+
+app.get('/demo/posters/:id.svg', (req, res) => {
+  const id = Number(req.params.id);
+  const [ink, paper] = fallbackColors(id);
+  res.type('image/svg+xml').send(`<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750"><rect width="500" height="750" fill="${ink}"/><circle cx="390" cy="150" r="170" fill="${paper}" opacity=".86"/><path d="M-30 590L280 240l250 290v220H-30z" fill="#101c2c" opacity=".62"/><text x="44" y="680" fill="${paper}" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">FILMVAULT</text></svg>`);
+});
+
+app.get('/demo/backdrops/:id.svg', (req, res) => {
+  const [ink, paper] = fallbackColors(Number(req.params.id));
+  res.type('image/svg+xml').send(`<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="${ink}"/><circle cx="1260" cy="190" r="430" fill="${paper}" opacity=".72"/><path d="M0 900L710 170l890 730z" fill="#101c2c" opacity=".65"/></svg>`);
+});
+
+app.get('/demo/people/:id.svg', (req, res) => {
+  const id = Number(req.params.id);
+  const [ink, paper] = fallbackColors(id);
+  res.type('image/svg+xml').send(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="${ink}"/><circle cx="150" cy="144" r="72" fill="${paper}"/><path d="M40 400c12-100 72-148 110-148s98 48 110 148" fill="${paper}" opacity=".8"/></svg>`);
+});
 
 // Database initialization function
 async function initializeDatabase() {

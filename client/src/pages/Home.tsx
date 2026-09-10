@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MovieCard from '../components/MovieCard';
 import UserTable from '../components/UserTable';
 import axiosInstance from '../api/config';
+import { getCatalogImageUrl } from '../config/config';
 
 interface Movie {
   MovieID: number;
@@ -12,6 +13,7 @@ interface Movie {
   ReleaseDate?: string;
   VoteAverage?: number;
   average_rating?: number;
+  media_type?: string;
 }
 
 interface Person {
@@ -19,13 +21,6 @@ interface Person {
   name: string;
   profile_path: string;
   known_for_department: string;
-  popularity: number;
-  gender: string;
-  known_for: {
-    id: number;
-    title: string;
-    media_type: string;
-  }[];
 }
 
 interface User {
@@ -35,6 +30,8 @@ interface User {
   movie_count: number;
   rating_count: number;
 }
+
+const getResults = (response: any) => response?.data?.results || response?.data || [];
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,259 +47,139 @@ const Home = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Check for message in URL params
-    const searchParams = new URLSearchParams(location.search);
-    const urlMessage = searchParams.get('message');
+    const urlMessage = new URLSearchParams(location.search).get('message');
     if (urlMessage) {
       setMessage(urlMessage);
-      // Remove the message from URL
       navigate('/', { replace: true });
-      
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        setMessage('');
-      }, 5000);
+      const timeout = window.setTimeout(() => setMessage(''), 5000);
+      return () => window.clearTimeout(timeout);
     }
-    
-    // We should NEVER test TMDB API in the frontend directly
-    // All API requests should go through the backend for security
-    const testTMDBAPI = async () => {
-      try {
-        await axiosInstance.get(`/api/movies/test-connection`);
-      } catch (err) {
-        console.error('Backend API connection failed:', err);
-      }
-    };
-    
-    testTMDBAPI();
+  }, [location.search, navigate]);
 
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      try {
-        // Try each request individually with debugging to isolate the issue
-        console.log('Starting API requests...');
-        
-        let topMoviesRes;
-        try {
-          console.log('Fetching top movies...');
-          topMoviesRes = await axiosInstance.get(`/api/movies/top`);
-          console.log('Top movies fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch top movies:', err);
-          topMoviesRes = { data: { results: [] } };
-        }
-        
-        let topTVShowsRes;
-        try {
-          console.log('Fetching top TV shows...');
-          topTVShowsRes = await axiosInstance.get(`/api/movies/top-tv`);
-          console.log('Top TV shows fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch top TV shows:', err);
-          topTVShowsRes = { data: { results: [] } };
-        }
-        
-        let userTopMoviesRes;
-        try {
-          console.log('Fetching top rated movies...');
-          userTopMoviesRes = await axiosInstance.get(`/api/movies/top-rated`);
-          console.log('Top rated movies fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch top rated movies:', err);
-          userTopMoviesRes = { data: { results: [] } };
-        }
-        
-        let popularPeopleRes;
-        try {
-          console.log('Fetching popular people...');
-          popularPeopleRes = await axiosInstance.get(`/api/movies/popular-people`);
-          console.log('Popular people fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch popular people:', err);
-          popularPeopleRes = { data: { results: [] } };
-        }
-        
-        let topUsersRes;
-        try {
-          console.log('Fetching top users...');
-          topUsersRes = await axiosInstance.get(`/api/users/top`);
-          console.log('Top users fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch top users:', err);
-          topUsersRes = { data: [] };
-        }
+      const requests = await Promise.allSettled([
+        axiosInstance.get('/api/movies/top'),
+        axiosInstance.get('/api/movies/top-tv'),
+        axiosInstance.get('/api/movies/top-rated'),
+        axiosInstance.get('/api/movies/popular-people'),
+        axiosInstance.get('/api/users/top'),
+      ]);
 
-        console.log("Popular Movies Response:", topMoviesRes.data);
-        console.log("Popular TV Shows Response:", topTVShowsRes.data);
-        console.log("Top Rated Movies Response:", userTopMoviesRes.data);
-        console.log("Popular People Response:", popularPeopleRes.data);
-        
-        // Enhanced error logging to diagnose issues
-        if (!topMoviesRes.data || (!topMoviesRes.data.results && !Array.isArray(topMoviesRes.data))) {
-          console.error("Invalid popular movies response format:", topMoviesRes.data);
-        }
-        if (!topTVShowsRes.data || (!topTVShowsRes.data.results && !Array.isArray(topTVShowsRes.data))) {
-          console.error("Invalid TV shows response format:", topTVShowsRes.data);
-        }
-        
-        // Handle the new paginated response format
-        setTopMovies(topMoviesRes.data?.results || topMoviesRes.data || []);
-        setTopTVShows(topTVShowsRes.data?.results || topTVShowsRes.data || []);
-        setUserTopMovies(userTopMoviesRes.data?.results || userTopMoviesRes.data || []);
-        setPopularPeople(popularPeopleRes.data?.results || popularPeopleRes.data || []);
-        setTopUsers(topUsersRes.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
+      const value = (index: number) => requests[index].status === 'fulfilled'
+        ? (requests[index] as PromiseFulfilledResult<any>).value
+        : null;
+
+      setTopMovies(getResults(value(0)));
+      setTopTVShows(getResults(value(1)));
+      setUserTopMovies(getResults(value(2)));
+      setPopularPeople(getResults(value(3)));
+      setTopUsers(value(4)?.data || []);
+      setLoading(false);
     };
 
     fetchData();
-  }, [navigate, location.search]);
+  }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?query=${encodeURIComponent(searchQuery)}&type=${searchType}`);
+      navigate('/search?query=' + encodeURIComponent(searchQuery) + '&type=' + searchType);
     }
   };
-  
-  const handleTypeChange = (type: 'multi' | 'person') => {
-    setSearchType(type);
-  };
 
-  if (loading) {
-    return (
-      <div className="container" style={{ marginTop: '150px' }}>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <div className="loading-text">Loading exciting content for you...</div>
-        </div>
+  const movieSection = (title: string, note: string, movies: Movie[], mediaType?: string) => (
+    <section className="vault-section">
+      <div className="vault-section-heading">
+        <div><h2>{title}</h2><p>{note}</p></div>
+        <span>{movies.length ? movies.length + ' titles' : 'Unavailable'}</span>
       </div>
-    );
-  }
+      {movies.length ? (
+        <div className="horizontal-slider">
+          {movies.map((movie) => (
+            <MovieCard
+              key={movie.MovieID}
+              movie={mediaType ? { ...movie, media_type: mediaType } : movie}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="vault-empty">The catalog service did not return any titles. Check the API connection and reload.</div>
+      )}
+    </section>
+  );
 
   return (
-    <div>
-      {message && (
-        <div className="notification notification-success">
-          <div className="notification-icon">✅</div>
-          <div className="notification-content">
-            <div className="notification-title">Success</div>
-            <div className="notification-message">{message}</div>
-          </div>
-        </div>
-      )}
+    <main className="vault-home">
+      {message && <div className="notification notification-success">{message}</div>}
 
-      <div className="search-container">
-        <div className="container">
-          <div className="search-box">
-            <form onSubmit={handleSearch}>
-              <span className="search-icon">🔍</span>
+      <header className="vault-hero">
+        <div className="vault-shell">
+          <div className="vault-hero-copy">
+            <p>Keep the films you want to remember.</p>
+            <h1>Your watchlist,<br />ratings, and finds.</h1>
+          </div>
+          <form className="vault-search" onSubmit={handleSearch}>
+            <label htmlFor="vault-query">Search the catalog</label>
+            <div>
               <input
-                type="text"
-                placeholder="Search"
+                id="vault-query"
+                type="search"
+                placeholder={searchType === 'person' ? 'Director or actor name' : 'Movie or TV title'}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
               />
-              <select 
-                value={searchType} 
-                onChange={(e) => handleTypeChange(e.target.value as 'multi' | 'person')}
-                className="search-type-dropdown"
-              >
+              <select value={searchType} onChange={(event) => setSearchType(event.target.value as 'multi' | 'person')} aria-label="Search type">
                 <option value="multi">Movies & TV</option>
                 <option value="person">People</option>
               </select>
-            </form>
-          </div>
+              <button type="submit" disabled={!searchQuery.trim()}>Search</button>
+            </div>
+            <p>Results include movies, series, cast, and crew from TMDB.</p>
+          </form>
         </div>
-      </div>
+      </header>
 
-      <div className="container">
-        <h2>Popular movies</h2>
-        <div className="horizontal-slider">
-          {topMovies && topMovies.length > 0 ? (
-            topMovies.map(movie => (
-              <MovieCard key={movie.MovieID} movie={movie} />
-            ))
-          ) : (
-            <p>No movies found</p>
-          )}
-        </div>
-      </div>
+      <div className="vault-shell vault-content">
+        {loading ? (
+          <div className="vault-loading"><span /><p>Loading the catalog…</p></div>
+        ) : (
+          <>
+            {movieSection('Popular films', 'What people are watching now', topMovies)}
+            {movieSection('Popular television', 'Series drawing an audience this week', topTVShows, 'tv')}
 
-      <div className="container">
-        <h2>Popular TV shows</h2>
-        <div className="horizontal-slider">
-          {topTVShows && topTVShows.length > 0 ? (
-            topTVShows.map(show => (
-              <MovieCard key={show.MovieID} movie={{...show, media_type: 'tv'}} />
-            ))
-          ) : (
-            <p>No TV shows found</p>
-          )}
-        </div>
-      </div>
-
-      <div className="container">
-        <h2>Popular people</h2>
-        <div className="horizontal-slider">
-          {popularPeople && popularPeople.length > 0 ? (
-            popularPeople.map(person => (
-              <Link 
-                to={`/person/${person.id}`} 
-                key={person.id}
-                className="cast-member"
-                style={{ textDecoration: 'none' }}
-              >
-                {person.profile_path ? (
-                  <img 
-                    src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} 
-                    alt={person.name}
-                    className="cast-photo" 
-                  />
-                ) : (
-                  <div className="no-cast-photo">
-                    <span>👤</span>
-                  </div>
-                )}
-                <div className="cast-info">
-                  <div className="tooltip-container">
-                    <div className="cast-name">{person.name}</div>
-                    <span className="tooltip-text">{person.name}</span>
-                  </div>
-                  <div className="tooltip-container">
-                    <div className="cast-character">{person.known_for_department}</div>
-                    <span className="tooltip-text">{person.known_for_department}</span>
-                  </div>
+            <section className="vault-section">
+              <div className="vault-section-heading">
+                <div><h2>People</h2><p>Actors and filmmakers appearing across the catalog</p></div>
+                <span>{popularPeople.length ? popularPeople.length + ' people' : 'Unavailable'}</span>
+              </div>
+              {popularPeople.length ? (
+                <div className="horizontal-slider people-slider">
+                  {popularPeople.map((person) => (
+                    <Link to={'/person/' + person.id} key={person.id} className="cast-member">
+                      {person.profile_path ? (
+                        <img src={getCatalogImageUrl(person.profile_path, 'w185')} alt="" className="cast-photo" />
+                      ) : <div className="no-cast-photo" aria-hidden="true">?</div>}
+                      <div className="cast-info"><div className="cast-name">{person.name}</div><div className="cast-character">{person.known_for_department}</div></div>
+                    </Link>
+                  ))}
                 </div>
-              </Link>
-            ))
-          ) : (
-            <p>No people found</p>
-          )}
-        </div>
-      </div>
+              ) : <div className="vault-empty">People are unavailable while the catalog API is offline.</div>}
+            </section>
 
-      <div className="container">
-        <h2>Top rated on FilmVault</h2>
-        <div className="horizontal-slider">
-          {userTopMovies && userTopMovies.length > 0 ? (
-            userTopMovies.map(movie => (
-              <MovieCard key={movie.MovieID} movie={movie} />
-            ))
-          ) : (
-            <p>No movies found</p>
-          )}
-        </div>
-      </div>
+            {movieSection('FilmVault member picks', 'Highest average ratings from saved collections', userTopMovies)}
 
-      <div className="container">
-        <h2>Top Contributors {topUsers.length > 0 ? `(${topUsers.length})` : ''}</h2>
-        <UserTable users={topUsers} />
+            <section className="vault-section contributors-section">
+              <div className="vault-section-heading">
+                <div><h2>Active collectors</h2><p>Members with the most saved titles and ratings</p></div>
+              </div>
+              <UserTable users={topUsers} />
+            </section>
+          </>
+        )}
       </div>
-    </div>
+    </main>
   );
 };
 

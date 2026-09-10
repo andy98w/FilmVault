@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getRatingColorClass } from '../components/MovieCard';
 import { getMovieDetails, getUserMovies, addToUserList, removeFromUserList } from '../api/movies';
+import { getCatalogImageUrl } from '../config/config';
 
 interface CastMember {
   id: number;
@@ -163,13 +164,9 @@ const MovieDetails = () => {
     );
   }
   
-  const backdropUrl = movie.BackdropPath 
-    ? `https://image.tmdb.org/t/p/original${movie.BackdropPath}` 
-    : null;
+  const backdropUrl = getCatalogImageUrl(movie.BackdropPath, 'original') || null;
     
-  const posterUrl = movie.PosterPath 
-    ? `https://image.tmdb.org/t/p/w500${movie.PosterPath}` 
-    : '/default.jpg';
+  const posterUrl = getCatalogImageUrl(movie.PosterPath);
   
   return (
     <div className="movie-details-page">
@@ -291,7 +288,7 @@ const MovieDetails = () => {
                   >
                     {person.profile_path ? (
                       <img 
-                        src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} 
+                        src={getCatalogImageUrl(person.profile_path, 'w185')}
                         alt={person.name}
                         className="cast-photo" 
                       />

@@ -17,8 +17,8 @@ export const getUserMovies = () => {
   return axiosInstance.get(`/api/movies/user/list`);
 };
 
-export const getMovieSearch = (query: string, page: number = 1) => {
-  return axiosInstance.get(`/api/movies/search?query=${encodeURIComponent(query)}&page=${page}`);
+export const getMovieSearch = (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {
+  return axiosInstance.get(`/api/movies/search?query=${encodeURIComponent(query)}&page=${page}&type=${type}`);
 };
 
 export const addToUserList = (movieData: {

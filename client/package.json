@@ -45,7 +45,7 @@
       "last 1 safari version"
     ]
   },
-  "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+  "description": "FilmVault's React client for catalog search, ratings, and member collections.",
   "main": "index.js",
   "keywords": [],
   "author": "",

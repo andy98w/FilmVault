@@ -59,7 +59,7 @@ const SearchPage = () => {
   const performSearch = async (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {
     setLoading(true);
     try {
-      const response = await getMovieSearch(query, page);
+      const response = await getMovieSearch(query, page, type);
       
       if (type === 'multi') {
         // For multi search, filter results by media type

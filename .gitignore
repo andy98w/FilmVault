@@ -178,6 +178,13 @@ server/.env*
 
 # Build directories
 client/build/
+server/dist/
+
+# Runtime uploads and scratch files
+server/profile-pictures/*
+!server/profile-pictures/.gitkeep
+server/temp/
+server/data/
 
 # IDE files
 .idea/

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getRatingColorClass } from '../components/MovieCard';
 import { getPersonDetails } from '../api/movies';
+import { getCatalogImageUrl } from '../config/config';
 
 interface KnownForCredit {
   id: number;
@@ -100,9 +101,7 @@ const PersonDetails = () => {
     );
   }
   
-  const profileUrl = person.profile_path 
-    ? `https://image.tmdb.org/t/p/w300${person.profile_path}` 
-    : undefined;
+  const profileUrl = getCatalogImageUrl(person.profile_path, 'w300') || undefined;
   
   const age = calculateAge(person.birthday, person.deathday);
   
@@ -180,7 +179,7 @@ const PersonDetails = () => {
                     <div className="poster-wrapper">
                       {credit.poster_path ? (
                         <img 
-                          src={`https://image.tmdb.org/t/p/w185${credit.poster_path}`} 
+                          src={getCatalogImageUrl(credit.poster_path, 'w185')}
                           alt={credit.title} 
                           className="movie-poster"
                         />

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { getCatalogImageUrl } from '../config/config';
 
 interface Movie {
   MovieID: number;
@@ -36,9 +37,7 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
     return null;
   }
   
-  const posterUrl = movie.PosterPath 
-    ? `https://image.tmdb.org/t/p/w500${movie.PosterPath}` 
-    : '/default.jpg';
+  const posterUrl = getCatalogImageUrl(movie.PosterPath);
   
   const handleRate = (rating: number) => {
     if (onRate) {
@@ -53,9 +52,11 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
   };
 
   return (
-    <div 
+    <button
+      type="button"
       className="movie-card"
       onClick={handleCardClick}
+      aria-label={'Open ' + movie.Title}
     >
       <div className="poster-wrapper">
         {movie.PosterPath ? (
@@ -125,7 +126,7 @@ const MovieCard = ({ movie, onList = false, onRemove, onRate }: MovieCardProps) 
           ))}
         </div>
       )}
-    </div>
+    </button>
   );
 };
 

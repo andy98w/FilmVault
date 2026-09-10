@@ -382,24 +382,24 @@ chown -R opc:opc /home/opc/filmvault-server
 
 # Create deployment README
 cat > /home/opc/DEPLOYMENT_GUIDE.md <<'READMEEOF'
-# FilmVault Secure Deployment Guide
+# FilmVault deployment guide
 
-## 🎯 What's Been Configured
+## Configured services
 
-Your server now has enterprise-grade security:
+The provisioning script configures the following controls:
 
-- ✅ **Nginx Reverse Proxy** - All traffic goes through Nginx
-- ✅ **SSL/TLS Ready** - HTTPS configured (or ready for your domain)
-- ✅ **WAF Protection** - Web Application Firewall blocks attacks
-- ✅ **Secrets in Vault** - Database password & JWT in OCI Vault
-- ✅ **Bastion Host** - SSH access only through bastion
-- ✅ **Fail2ban** - Automatic IP blocking after failed attempts
-- ✅ **Firewall** - Only ports 80, 443, 22 open
-- ✅ **Auto Updates** - Security patches applied automatically
-- ✅ **Monitoring** - CPU, disk, and MySQL connection alerts
-- ✅ **Logging** - All traffic and events logged
+- **Nginx reverse proxy** - Routes application traffic
+- **TLS configuration** - Prepared for the configured domain
+- **Request filtering** - Nginx rules for common attack patterns
+- **OCI Vault** - Stores the database password and JWT secret
+- **Bastion host** - Provides the intended SSH path
+- **Fail2ban** - Blocks repeated failed access attempts
+- **Firewall** - Allows the configured web and SSH ports
+- **Package updates** - Applies security updates
+- **Monitoring** - Configures CPU, disk, and MySQL alerts
+- **Logging** - Writes application and access logs
 
-## 🚀 Deployment Steps
+## Deployment steps
 
 ### 1. Deploy Backend API
 

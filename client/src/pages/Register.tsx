@@ -31,7 +31,7 @@ const Register = () => {
     }
     
     try {
-      const response = await register(username, email, password);
+      await register(username, email, password);
       
       // Set success message
       setSuccess('Registration successful! Please check your email to verify your account.');

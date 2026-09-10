@@ -15,6 +15,16 @@ const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const IS_DEV = process.env.NODE_ENV !== 'production';
 const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 
+const logTmdbError = (context: string, error: any) => {
+  // Axios errors include the complete request config, which may contain API
+  // credentials. Log only safe diagnostic fields.
+  console.error(context, {
+    message: error?.message || 'Unknown TMDB error',
+    status: error?.response?.status,
+    statusMessage: error?.response?.data?.status_message,
+  });
+};
+
 // Log API key status securely
 if (!TMDB_API_KEY) {
   console.error('ERROR: TMDB_API_KEY environment variable is missing! Set this in your .env file to use TMDB API.');
@@ -28,31 +38,62 @@ if (!TMDB_API_KEY) {
   console.log(`Mock data mode: ${USE_MOCK_DATA ? 'Enabled' : 'Disabled'}`);
 }
 
-// Helper function to create mock movie data
+const fallbackBaseUrl = process.env.SERVER_URL || 'http://127.0.0.1:5001';
+const fallbackFilms = [
+  ['Perfect Days', 2023, 7.8], ['Past Lives', 2023, 7.9], ['The Holdovers', 2023, 8.0],
+  ['Anatomy of a Fall', 2023, 7.7], ['The Zone of Interest', 2023, 7.4], ['Dune: Part Two', 2024, 8.5],
+  ['Arrival', 2016, 7.9], ['Parasite', 2019, 8.5], ['Portrait of a Lady on Fire', 2019, 8.1],
+  ['The Social Network', 2010, 7.7], ['Moonlight', 2016, 7.4], ['Aftersun', 2022, 7.7],
+] as const;
+const fallbackShows = [
+  ['Shōgun', 2024, 8.7], ['Severance', 2022, 8.7], ['The Bear', 2022, 8.6],
+  ['Succession', 2018, 8.9], ['Dark', 2017, 8.7], ['Mr. Robot', 2015, 8.6],
+  ['Atlanta', 2016, 8.6], ['The Leftovers', 2014, 8.3], ['Fleabag', 2016, 8.7],
+] as const;
+const fallbackPeople = [
+  ['Greta Lee', 'Acting'], ['Hiroyuki Sanada', 'Acting'], ['Celine Song', 'Directing'],
+  ['Ayo Edebiri', 'Acting'], ['Denis Villeneuve', 'Directing'], ['Kōji Yakusho', 'Acting'],
+] as const;
+
+const mediaFromSeed = (seed: readonly (readonly [string, number, number])[], count: number, offset: number, mediaType: 'movie' | 'tv') =>
+  Array.from({ length: Math.min(count, seed.length) }, (_, index) => {
+    const [title, year, rating] = seed[index];
+    const id = offset + index + 1;
+    return {
+      MovieID: id,
+      Title: title,
+      PosterPath: `${fallbackBaseUrl}/demo/posters/${id}.svg`,
+      BackdropPath: `${fallbackBaseUrl}/demo/backdrops/${id}.svg`,
+      Overview: `${title} is included in FilmVault's local catalog while the live TMDB connection is unavailable.`,
+      ReleaseDate: `${year}-06-15T12:00:00`,
+      Runtime: mediaType === 'movie' ? 128 : 52,
+      Genres: [{ id, name: mediaType === 'movie' ? 'Film' : 'Drama' }],
+      VoteAverage: rating,
+      VoteCount: 1200 + id * 13,
+      media_type: mediaType,
+    };
+  });
+
+// Deterministic fallback data keeps development useful without pretending the
+// live TMDB integration is healthy.
 const createMockMovies = (count: number) => {
-  return Array(count).fill(0).map((_, i) => ({
-    MovieID: i + 1,
-    Title: `Mock Movie ${i + 1}`,
-    PosterPath: '/default-poster.jpg',
-    Overview: 'This is a mock movie for testing purposes. When in development mode without a valid TMDB API key, this mock data is provided instead of actual API data.',
-    ReleaseDate: new Date(Date.now() - Math.floor(Math.random() * 10 * 365 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // Random date within last 10 years
-    VoteAverage: Math.floor(Math.random() * 10) + Math.random(),
-    media_type: 'movie'
-  }));
+  return mediaFromSeed(fallbackFilms, count, 100, 'movie');
 };
+
+const createMockTVShows = (count: number) => mediaFromSeed(fallbackShows, count, 200, 'tv');
 
 // Mock popular people for development
 const createMockPeople = (count: number) => {
-  return Array(count).fill(0).map((_, i) => ({
-    id: i + 1,
-    name: `Mock Actor ${i + 1}`,
-    profile_path: '/default-profile.jpg',
-    known_for_department: i % 2 === 0 ? 'Acting' : 'Directing',
-    popularity: Math.floor(Math.random() * 100),
-    gender: i % 2 === 0 ? 'Male' : 'Female',
+  return Array.from({ length: Math.min(count, fallbackPeople.length) }, (_, i) => ({
+    id: 301 + i,
+    name: fallbackPeople[i][0],
+    profile_path: `${fallbackBaseUrl}/demo/people/${301 + i}.svg`,
+    known_for_department: fallbackPeople[i][1],
+    popularity: 90 - i * 3,
+    gender: '',
     known_for: Array(3).fill(0).map((_, j) => ({
-      id: j + 1,
-      title: `Mock Movie ${j + 1}`,
+      id: 101 + j,
+      title: fallbackFilms[j][0],
       media_type: 'movie'
     })),
     media_type: 'person'
@@ -101,7 +142,7 @@ router.get('/test-connection', async (req, res) => {
       success: true
     });
   } catch (error) {
-    console.error('Error testing API connection:', error);
+    logTmdbError('Error testing API connection', error);
     res.status(500).json({ message: 'Server error', success: false });
   }
 });
@@ -179,7 +220,7 @@ router.get('/top', async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('Error fetching top movies from TMDB:', error);
+    logTmdbError('Error fetching top movies from TMDB', error);
     res.status(500).json({ message: 'Error fetching movies from TMDB' });
   }
 });
@@ -188,12 +229,9 @@ router.get('/top', async (req, res) => {
 router.get('/top-tv', async (req, res) => {
   try {
     // Check if API key is available
-    if (!TMDB_API_KEY) {
-      return res.status(500).json({ 
-        message: 'TMDB API key is not configured on the server',
-        is_mock: true,
-        results: [] 
-      });
+    if (!TMDB_API_KEY || USE_MOCK_DATA) {
+      const results = createMockTVShows(20);
+      return res.json({ results, page: 1, total_pages: 1, total_results: results.length, is_mock: true });
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
@@ -222,7 +260,7 @@ router.get('/top-tv', async (req, res) => {
       total_results: response.data.total_results
     });
   } catch (error) {
-    console.error('Error fetching top TV shows from TMDB:', error);
+    logTmdbError('Error fetching top TV shows from TMDB', error);
     res.status(500).json({ message: 'Error fetching TV shows from TMDB' });
   }
 });
@@ -231,12 +269,8 @@ router.get('/top-tv', async (req, res) => {
 router.get('/top-rated', async (req, res) => {
   try {
     // Check if API key is available
-    if (!TMDB_API_KEY) {
-      return res.status(500).json({ 
-        message: 'TMDB API key is not configured on the server',
-        is_mock: true,
-        results: [] 
-      });
+    if (!TMDB_API_KEY || USE_MOCK_DATA) {
+      return res.json({ results: createMockMovies(20).sort((a, b) => b.VoteAverage - a.VoteAverage), page: 1, total_pages: 1, total_results: 20, is_mock: true });
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
@@ -259,7 +293,7 @@ router.get('/top-rated', async (req, res) => {
       total_results: response.data.total_results
     });
   } catch (error) {
-    console.error('Error fetching top rated movies from TMDB:', error);
+    logTmdbError('Error fetching top rated movies from TMDB', error);
     res.status(500).json({ message: 'Error fetching top rated movies' });
   }
 });
@@ -268,12 +302,8 @@ router.get('/top-rated', async (req, res) => {
 router.get('/popular-people', async (req, res) => {
   try {
     // Check if API key is available
-    if (!TMDB_API_KEY) {
-      return res.status(500).json({ 
-        message: 'TMDB API key is not configured on the server',
-        is_mock: true,
-        results: [] 
-      });
+    if (!TMDB_API_KEY || USE_MOCK_DATA) {
+      return res.json({ results: createMockPeople(12), page: 1, total_pages: 1, total_results: 12, is_mock: true });
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
@@ -308,7 +338,7 @@ router.get('/popular-people', async (req, res) => {
       total_results: response.data.total_results
     });
   } catch (error) {
-    console.error('Error fetching popular people from TMDB:', error);
+    logTmdbError('Error fetching popular people from TMDB', error);
     res.status(500).json({ message: 'Error fetching popular people' });
   }
 });
@@ -317,11 +347,11 @@ router.get('/popular-people', async (req, res) => {
 router.get('/details/:id', async (req, res) => {
   try {
     // Check if API key is available
-    if (!TMDB_API_KEY) {
-      return res.status(500).json({ 
-        message: 'TMDB API key is not configured on the server',
-        is_mock: true
-      });
+    if (!TMDB_API_KEY || USE_MOCK_DATA) {
+      const requestedId = Number(req.params.id);
+      const catalog = [...createMockMovies(20), ...createMockTVShows(20)];
+      const movie = catalog.find((item) => item.MovieID === requestedId) || catalog[0];
+      return res.json({ ...movie, Cast: createMockPeople(6).map((person, index) => ({ ...person, character: ['Lead', 'Mika', 'Nora', 'Sydney', 'Director', 'Producer'][index] })), Similar: (movie.media_type === 'tv' ? createMockTVShows(6) : createMockMovies(6)).filter((item) => item.MovieID !== movie.MovieID), is_mock: true });
     }
     
     const { id } = req.params;
@@ -363,7 +393,7 @@ router.get('/details/:id', async (req, res) => {
     
     res.json(movie);
   } catch (error) {
-    console.error('Error fetching media details from TMDB:', error);
+    logTmdbError('Error fetching media details from TMDB', error);
     res.status(500).json({ message: 'Error fetching details' });
   }
 });
@@ -385,28 +415,17 @@ router.get('/search', async (req, res) => {
       
       let results;
       if (type === 'person') {
-        // Generate mock people results that somewhat match the search query
-        results = createMockPeople(8).map(person => {
-          return {
-            ...person,
-            name: `${person.name} ${query}` // Append query to name to simulate relevant results
-          };
-        });
+        results = createMockPeople(8).filter((person) => person.name.toLowerCase().includes(query.toLowerCase()));
       } else {
-        // Generate mock movie results that somewhat match the search query
-        results = createMockMovies(10).map(movie => {
-          return {
-            ...movie,
-            Title: `${movie.Title} ${query}` // Append query to title to simulate relevant results
-          };
-        });
+        results = [...createMockMovies(20), ...createMockTVShows(20), ...createMockPeople(8)]
+          .filter((item: any) => String(item.Title || item.name).toLowerCase().includes(query.toLowerCase()));
       }
       
       return res.json({
         results: results,
         page: page,
-        total_pages: 3,
-        total_results: 30,
+        total_pages: 1,
+        total_results: results.length,
         is_mock: true,
         query: query
       });
@@ -464,7 +483,7 @@ router.get('/search', async (req, res) => {
         query: query
       });
     } catch (apiError) {
-      console.error('TMDB search API failed:', apiError);
+      logTmdbError('TMDB search API failed', apiError);
       
       // In development, provide mock data on API failure
       if (IS_DEV) {
@@ -490,8 +509,8 @@ router.get('/search', async (req, res) => {
         return res.json({
           results: mockResults,
           page: page,
-          total_pages: 3,
-          total_results: 30,
+          total_pages: 1,
+          total_results: mockResults.length,
           is_mock: true,
           query: query
         });
@@ -500,7 +519,7 @@ router.get('/search', async (req, res) => {
       throw apiError; // Re-throw in production
     }
   } catch (error) {
-    console.error('Error searching from TMDB:', error);
+    logTmdbError('Error searching from TMDB', error);
     res.status(500).json({ 
       message: `Error searching ${req.query.type || 'movies'}`,
       query: req.query.query
@@ -512,11 +531,10 @@ router.get('/search', async (req, res) => {
 router.get('/person/:id', async (req, res) => {
   try {
     // Check if API key is available
-    if (!TMDB_API_KEY) {
-      return res.status(500).json({ 
-        message: 'TMDB API key is not configured on the server',
-        is_mock: true
-      });
+    if (!TMDB_API_KEY || USE_MOCK_DATA) {
+      const id = Number(req.params.id);
+      const person = createMockPeople(8).find((item) => item.id === id) || createMockPeople(1)[0];
+      return res.json({ ...person, id, biography: 'Local fallback profile used while the live TMDB connection is unavailable.', birthday: '1985-06-15', deathday: null, place_of_birth: '', knownFor: createMockMovies(6).map((movie) => ({ id: movie.MovieID, title: movie.Title, poster_path: movie.PosterPath, media_type: movie.media_type, character: '', release_date: movie.ReleaseDate, vote_average: movie.VoteAverage })), is_mock: true });
     }
     
     const { id } = req.params;
@@ -560,7 +578,7 @@ router.get('/person/:id', async (req, res) => {
     
     res.json(person);
   } catch (error) {
-    console.error('Error fetching person details from TMDB:', error);
+    logTmdbError('Error fetching person details from TMDB', error);
     res.status(500).json({ message: 'Error fetching person details' });
   }
 });

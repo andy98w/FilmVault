@@ -24,14 +24,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andy98w/MyFavMovies.git"
+    "url": "git+https://github.com/andy98w/FilmVault.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/andy98w/MyFavMovies/issues"
+    "url": "https://github.com/andy98w/FilmVault/issues"
   },
-  "homepage": "https://github.com/andy98w/MyFavMovies#readme",
-  "description": ""
+  "homepage": "https://github.com/andy98w/FilmVault#readme",
+  "description": "A social film catalog for saved titles, ratings, and member collections."
 }

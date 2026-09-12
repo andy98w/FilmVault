@@ -70,3 +70,32 @@ test('rejects malformed responses without caching them and bounds timeout', asyn
     assert.ok(Date.now() - started < 1500);
   });
 });
+
+test('recovers after one 503 and refuses expired stale data', async () => {
+  let calls = 0, down = false;
+  await fixture((_req, res) => {
+    calls++;
+    res.statusCode = down ? 500 : calls === 1 ? 503 : 200;
+    res.setHeader('Retry-After', '0');
+    res.setHeader('Content-Type', 'application/json'); res.end('{}');
+  }, async base => {
+    const client = new CatalogClient(base, { ...opts, ttlMs: 1, staleMs: 1 });
+    assert.equal((await client.get(base + '/movie')).source, 'upstream');
+    assert.equal(calls, 2);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    down = true;
+    await assert.rejects(client.get(base + '/movie'));
+  });
+});
+
+test('enforces an absolute deadline even when the upstream keeps sending bytes', async () => {
+  await fixture((_req, res) => {
+    res.write('{"value":"');
+    const timer = setInterval(() => res.write('x'), 10);
+    res.on('close', () => clearInterval(timer));
+  }, async base => {
+    const started = Date.now();
+    await assert.rejects(new CatalogClient(base, opts).get(base + '/movie'));
+    assert.ok(Date.now() - started < 1500);
+  });
+});

@@ -49,6 +49,7 @@ export class CatalogClient {
       try {
         const response = await axios.get(url, { ...config, maxRedirects: 0,
           maxContentLength: 2_000_000, timeout: Math.max(1, deadline - Date.now()),
+          signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
           validateStatus: status => status >= 200 && status < 300 });
         if (!response.data || typeof response.data !== 'object' || Array.isArray(response.data)) {
           throw new Error('Invalid catalog response');

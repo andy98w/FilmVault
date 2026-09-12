@@ -1,5 +1,6 @@
 import express from 'express';
-import axios from 'axios';
+import { AxiosRequestConfig } from 'axios';
+import { catalogClient } from '../services/catalog-client';
 import pool from '../config/db';
 import { authenticateToken } from '../middleware/auth';
 import dotenv from 'dotenv';
@@ -8,6 +9,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const router = express.Router();
+const getCatalog = async (res: express.Response, url: string, config: AxiosRequestConfig) => {
+  const result = await catalogClient.get(url, config);
+  res.setHeader('X-FilmVault-Data-Source', result.source);
+  if (result.source === 'stale') res.setHeader('Warning', '110 - "Response is stale"');
+  return result;
+};
 
 // TMDB Configuration
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -178,7 +185,7 @@ router.get('/top', async (req, res) => {
         timeout: IS_DEV ? 5000 : 10000 // Shorter timeout in development
       };
       
-      const response = await axios.get(`${TMDB_API_URL}/movie/popular`, axiosConfig);
+      const response = await getCatalog(res, `${TMDB_API_URL}/movie/popular`, axiosConfig);
       
       if (!response.data || !response.data.results) {
         throw new Error('Invalid TMDB API response format');
@@ -235,7 +242,7 @@ router.get('/top-tv', async (req, res) => {
     }
     
     const page = req.query.page ? Number(req.query.page) : 1;
-    const response = await axios.get(`${TMDB_API_URL}/tv/popular`, {
+    const response = await getCatalog(res, `${TMDB_API_URL}/tv/popular`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -275,7 +282,7 @@ router.get('/top-rated', async (req, res) => {
     
     const page = req.query.page ? Number(req.query.page) : 1;
     
-    const response = await axios.get(`${TMDB_API_URL}/movie/top_rated`, {
+    const response = await getCatalog(res, `${TMDB_API_URL}/movie/top_rated`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -308,7 +315,7 @@ router.get('/popular-people', async (req, res) => {
     
     const page = req.query.page ? Number(req.query.page) : 1;
     
-    const response = await axios.get(`${TMDB_API_URL}/person/popular`, {
+    const response = await getCatalog(res, `${TMDB_API_URL}/person/popular`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -358,7 +365,7 @@ router.get('/details/:id', async (req, res) => {
     const type = req.query.type as string || 'movie';
     
     const mediaType = type === 'tv' ? 'tv' : 'movie';
-    const response = await axios.get(`${TMDB_API_URL}/${mediaType}/${id}`, {
+    const response = await getCatalog(res, `${TMDB_API_URL}/${mediaType}/${id}`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',
@@ -444,7 +451,7 @@ router.get('/search', async (req, res) => {
     }
     
     try {
-      const response = await axios.get(`${TMDB_API_URL}/${endpoint}`, {
+      const response = await getCatalog(res, `${TMDB_API_URL}/${endpoint}`, {
         params: {
           api_key: TMDB_API_KEY,
           language: 'en-US',
@@ -539,7 +546,7 @@ router.get('/person/:id', async (req, res) => {
     
     const { id } = req.params;
     
-    const response = await axios.get(`${TMDB_API_URL}/person/${id}`, {
+    const response = await getCatalog(res, `${TMDB_API_URL}/person/${id}`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'en-US',

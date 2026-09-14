@@ -46,3 +46,40 @@ Fixture: 10,000 synthetic movies, four users with 10 / 100 / 1,000 / 10,000 memb
 ## Rollout
 
 The response envelope changes: ship the server and client together. Existing cached JavaScript expects an array at the private endpoint, so an independent API-only deployment would break old clients. A versioned endpoint or compatibility window is required if deployments cannot be coordinated. No live production deployment is implied by the benchmark or feature branch.
+
+## Recorded result — September 14, 2026
+
+[Successful CI run](https://github.com/andy98w/FilmVault/actions/runs/34903266101),
+commit `4da151d`. [Raw measurements and plans](benchmarks/collections-mysql-2026-09-14.json).
+MySQL 8.0.46, Node 22.23.2, GitHub Linux runner with four visible AMD EPYC 7763 CPUs
+and roughly 16 GiB memory. All rows below use the same synthetic fixture described above.
+
+| Collection rows | Old full read p50 / p95 ms | First 15 p50 / p95 ms | Middle page p50 / p95 ms | Full → first-page JSON bytes |
+|---|---|---|---|---|
+| 10 | 0.54 / 0.72 | 0.56 / 0.68 | 0.53 / 0.60 | 6,242 → 6,271 |
+| 100 | 0.99 / 1.25 | 0.59 / 0.65 | 0.58 / 0.72 | 62,493 → 9,512 |
+| 1,000 | 3.95 / 4.68 | 0.74 / 0.86 | 0.74 / 1.03 | 625,894 → 9,530 |
+| 10,000 | 33.62 / 43.44 | 0.56 / 0.71 | 3.73 / 3.82 | 6,268,895 → 9,547 |
+
+The result measures fetching a useful first page instead of the entire collection;
+it is not a claim that reading all 10,000 rows became this much faster. Walking every
+page adds round trips. Tiny collections show little benefit and a small envelope overhead.
+
+EXPLAIN ANALYZE for the 10,000-row first page visits 16 membership rows before the limit.
+The middle-page plan visits 5,016 index entries, then joins only the 16 qualifying rows.
+MySQL chose an ordered index scan rather than an immediate range seek. Explicit user
+ordering, removing the duplicate order expression, and selecting memberships in a
+limited derived table did not remove that scan (plans retained in the raw artifact).
+No optimizer override or redundant MySQL index was added. Do not claim constant-work
+or O(page-size) deep reads from this result. Recheck plans on the deployment's actual
+schema and distribution. MySQL documents this preference for ordered indexes with
+LIMIT in its [optimizer reference](https://dev.mysql.com/doc/refman/8.0/en/limit-optimization.html).
+
+The SQLite index adds another B-tree to maintain on membership inserts/deletes. An
+in-memory SQLite 3.53.4 fixture with 10,000 memberships used 21 additional 4,096-byte
+pages (86,016 bytes) for that index; this is a local allocation observation, not a
+production storage estimate. Initial index creation can briefly block local writes.
+
+Validation: 13 passing server/catalog/HTTP/SQLite tests, six passing MySQL contract
+tests, five passing client tests, server build, client typecheck, and a successful
+local optimized client build. No production database or deployment was changed.

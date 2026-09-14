@@ -1,0 +1,288 @@
+{
+  "measuredAt": "2026-09-14T22:17:37.405Z",
+  "commit": "4da151daa0fb021fb3da625940419fba3b4ad830",
+  "engine": [
+    {
+      "version": "8.0.46"
+    }
+  ],
+  "host": {
+    "cpus": 4,
+    "model": "AMD EPYC 9V74 80-Core Processor",
+    "memoryBytes": 16766414848,
+    "node": "v22.23.2"
+  },
+  "fixture": {
+    "movies": 10000,
+    "memberships": 11110,
+    "users": 4,
+    "ratings": "50%",
+    "synthetic": true
+  },
+  "notes": "Sequential local database calls including decoding and DTO construction, excluding HTTP/browser/TLS. First run is not cold-cache (seed and ANALYZE ran first). 30 warm iterations per variant. No production data.",
+  "schema": [
+    {
+      "Table": "user_movies",
+      "Create Table": "CREATE TABLE `user_movies` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `movie_id` int NOT NULL,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_user_movie` (`user_id`,`movie_id`),\n  KEY `movie_id` (`movie_id`),\n  KEY `idx_user_movies_user_id` (`user_id`),\n  CONSTRAINT `user_movies_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `user_movies_ibfk_2` FOREIGN KEY (`movie_id`) REFERENCES `movies` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB AUTO_INCREMENT=11152 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+    }
+  ],
+  "indexes": [
+    {
+      "Table": "user_movies",
+      "Non_unique": 0,
+      "Key_name": "PRIMARY",
+      "Seq_in_index": 1,
+      "Column_name": "id",
+      "Collation": "A",
+      "Cardinality": 10926,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "user_movies",
+      "Non_unique": 0,
+      "Key_name": "unique_user_movie",
+      "Seq_in_index": 1,
+      "Column_name": "user_id",
+      "Collation": "A",
+      "Cardinality": 4,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "user_movies",
+      "Non_unique": 0,
+      "Key_name": "unique_user_movie",
+      "Seq_in_index": 2,
+      "Column_name": "movie_id",
+      "Collation": "A",
+      "Cardinality": 10926,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "user_movies",
+      "Non_unique": 1,
+      "Key_name": "movie_id",
+      "Seq_in_index": 1,
+      "Column_name": "movie_id",
+      "Collation": "A",
+      "Cardinality": 10000,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "user_movies",
+      "Non_unique": 1,
+      "Key_name": "idx_user_movies_user_id",
+      "Seq_in_index": 1,
+      "Column_name": "user_id",
+      "Collation": "A",
+      "Cardinality": 4,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    }
+  ],
+  "results": [
+    {
+      "collectionSize": 10,
+      "baseline": {
+        "firstRunMs": 1.7805230000003576,
+        "warmP50Ms": 0.536544000000049,
+        "warmP95Ms": 0.7183970000000954,
+        "responseBytes": 6242
+      },
+      "paginated": {
+        "firstRunMs": 1.5109339999999065,
+        "warmP50Ms": 0.5610200000000987,
+        "warmP95Ms": 0.6822190000002593,
+        "responseBytes": 6271
+      },
+      "deepPage": {
+        "firstRunMs": 0.5619309999997313,
+        "warmP50Ms": 0.5339100000001054,
+        "warmP95Ms": 0.6007079999999405,
+        "responseBytes": 3194
+      },
+      "baselinePlan": [
+        {
+          "EXPLAIN": "-> Nested loop left join  (cost=8.25 rows=10) (actual time=0.0165..0.0437 rows=10 loops=1)\n    -> Nested loop inner join  (cost=4.75 rows=10) (actual time=0.0122..0.0246 rows=10 loops=1)\n        -> Covering index lookup on um using unique_user_movie (user_id=1)  (cost=1.25 rows=10) (actual time=0.00643..0.00853 rows=10 loops=1)\n        -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.26 rows=1) (actual time=0.00129..0.00133 rows=1 loops=10)\n    -> Single-row index lookup on mr using unique_user_movie_rating (user_id=1, movie_id=um.movie_id)  (cost=0.26 rows=1) (actual time=0.0017..0.00172 rows=0.5 loops=10)\n"
+        }
+      ],
+      "pagePlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=8.25 rows=10) (actual time=0.0214..0.0477 rows=10 loops=1)\n    -> Nested loop left join  (cost=8.25 rows=10) (actual time=0.0212..0.0468 rows=10 loops=1)\n        -> Nested loop inner join  (cost=4.75 rows=10) (actual time=0.0185..0.0286 rows=10 loops=1)\n            -> Sort: um.id DESC  (cost=1.25 rows=10) (actual time=0.0137..0.0143 rows=10 loops=1)\n                -> Index lookup on um using unique_user_movie (user_id=1)  (cost=1.25 rows=10) (actual time=0.00668..0.00899 rows=10 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.26 rows=1) (actual time=0.0012..0.00123 rows=1 loops=10)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=1, movie_id=um.movie_id)  (cost=0.26 rows=1) (actual time=0.00163..0.00164 rows=0.5 loops=10)\n"
+        }
+      ],
+      "deepPlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=2.28 rows=10) (actual time=0.0433..0.056 rows=5 loops=1)\n    -> Nested loop left join  (cost=2.28 rows=10) (actual time=0.0431..0.0553 rows=5 loops=1)\n        -> Nested loop inner join  (cost=1.27 rows=10) (actual time=0.039..0.0441 rows=5 loops=1)\n            -> Sort: um.id DESC  (cost=0.258 rows=10) (actual time=0.0339..0.0342 rows=5 loops=1)\n                -> Filter: (um.id < 47)  (cost=0.258 rows=10) (actual time=0.0262..0.0294 rows=5 loops=1)\n                    -> Index lookup on um using unique_user_movie (user_id=1)  (cost=0.258 rows=10) (actual time=0.0254..0.0277 rows=10 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=2.25 rows=1) (actual time=0.00171..0.00174 rows=1 loops=5)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=1, movie_id=um.movie_id)  (cost=2.25 rows=1) (actual time=0.00199..0.00202 rows=0.6 loops=5)\n"
+        }
+      ]
+    },
+    {
+      "collectionSize": 100,
+      "baseline": {
+        "firstRunMs": 1.3400820000001659,
+        "warmP50Ms": 0.9942809999997735,
+        "warmP95Ms": 1.2540549999998802,
+        "responseBytes": 62493
+      },
+      "paginated": {
+        "firstRunMs": 0.7993620000002011,
+        "warmP50Ms": 0.5863569999996798,
+        "warmP95Ms": 0.6451139999999214,
+        "responseBytes": 9512
+      },
+      "deepPage": {
+        "firstRunMs": 0.5730180000000473,
+        "warmP50Ms": 0.5764129999997749,
+        "warmP95Ms": 0.7236909999996897,
+        "responseBytes": 9658
+      },
+      "baselinePlan": [
+        {
+          "EXPLAIN": "-> Nested loop left join  (cost=80.3 rows=100) (actual time=0.046..0.337 rows=100 loops=1)\n    -> Nested loop inner join  (cost=45.3 rows=100) (actual time=0.0411..0.166 rows=100 loops=1)\n        -> Covering index lookup on um using unique_user_movie (user_id=2)  (cost=10.3 rows=100) (actual time=0.0349..0.047 rows=100 loops=1)\n        -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.251 rows=1) (actual time=981e-6..0.00101 rows=1 loops=100)\n    -> Single-row index lookup on mr using unique_user_movie_rating (user_id=2, movie_id=um.movie_id)  (cost=0.251 rows=1) (actual time=0.00153..0.00155 rows=0.5 loops=100)\n"
+        }
+      ],
+      "pagePlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=80.3 rows=16) (actual time=0.0481..0.0894 rows=16 loops=1)\n    -> Nested loop left join  (cost=80.3 rows=100) (actual time=0.0478..0.0881 rows=16 loops=1)\n        -> Nested loop inner join  (cost=45.3 rows=100) (actual time=0.0449..0.0606 rows=16 loops=1)\n            -> Sort: um.id DESC  (cost=10.3 rows=100) (actual time=0.04..0.0408 rows=16 loops=1)\n                -> Index lookup on um using unique_user_movie (user_id=2)  (cost=10.3 rows=100) (actual time=0.016..0.0251 rows=100 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.251 rows=1) (actual time=0.00102..0.00105 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=2, movie_id=um.movie_id)  (cost=0.251 rows=1) (actual time=0.00154..0.00155 rows=0.5 loops=16)\n"
+        }
+      ],
+      "deepPlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=20.6 rows=16) (actual time=0.0492..0.0947 rows=16 loops=1)\n    -> Nested loop left join  (cost=20.6 rows=100) (actual time=0.049..0.0934 rows=16 loops=1)\n        -> Nested loop inner join  (cost=10.5 rows=100) (actual time=0.0461..0.0658 rows=16 loops=1)\n            -> Sort: um.id DESC  (cost=0.341 rows=100) (actual time=0.0409..0.0416 rows=16 loops=1)\n                -> Filter: (um.id < 102)  (cost=0.341 rows=100) (actual time=0.0177..0.0313 rows=50 loops=1)\n                    -> Index lookup on um using unique_user_movie (user_id=2)  (cost=0.341 rows=100) (actual time=0.017..0.0246 rows=100 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.432 rows=1) (actual time=0.0013..0.00133 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=2, movie_id=um.movie_id)  (cost=0.432 rows=1) (actual time=0.00155..0.00156 rows=0.5 loops=16)\n"
+        }
+      ]
+    },
+    {
+      "collectionSize": 1000,
+      "baseline": {
+        "firstRunMs": 4.418283999999858,
+        "warmP50Ms": 3.950051999999687,
+        "warmP95Ms": 4.677396999999928,
+        "responseBytes": 625894
+      },
+      "paginated": {
+        "firstRunMs": 0.8689349999999649,
+        "warmP50Ms": 0.7370900000000802,
+        "warmP95Ms": 0.8556060000000798,
+        "responseBytes": 9530
+      },
+      "deepPage": {
+        "firstRunMs": 0.7589229999998679,
+        "warmP50Ms": 0.7403949999998076,
+        "warmP95Ms": 1.0304129999999532,
+        "responseBytes": 9691
+      },
+      "baselinePlan": [
+        {
+          "EXPLAIN": "-> Nested loop left join  (cost=801 rows=1000) (actual time=0.0451..2.89 rows=1000 loops=1)\n    -> Nested loop inner join  (cost=451 rows=1000) (actual time=0.0396..1.31 rows=1000 loops=1)\n        -> Covering index lookup on um using unique_user_movie (user_id=3)  (cost=101 rows=1000) (actual time=0.0335..0.214 rows=1000 loops=1)\n        -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=903e-6..934e-6 rows=1 loops=1000)\n    -> Single-row index lookup on mr using unique_user_movie_rating (user_id=3, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.0014..0.00142 rows=0.5 loops=1000)\n"
+        }
+      ],
+      "pagePlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=801 rows=16) (actual time=0.287..0.33 rows=16 loops=1)\n    -> Nested loop left join  (cost=801 rows=1000) (actual time=0.287..0.329 rows=16 loops=1)\n        -> Nested loop inner join  (cost=451 rows=1000) (actual time=0.284..0.301 rows=16 loops=1)\n            -> Sort: um.id DESC  (cost=101 rows=1000) (actual time=0.279..0.28 rows=16 loops=1)\n                -> Index lookup on um using unique_user_movie (user_id=3)  (cost=101 rows=1000) (actual time=0.0379..0.185 rows=1000 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00107..0.0011 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=3, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00159..0.00161 rows=0.5 loops=16)\n"
+        }
+      ],
+      "deepPlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=234 rows=16) (actual time=0.296..0.34 rows=16 loops=1)\n    -> Nested loop left join  (cost=234 rows=1000) (actual time=0.295..0.338 rows=16 loops=1)\n        -> Nested loop inner join  (cost=120 rows=1000) (actual time=0.293..0.311 rows=16 loops=1)\n            -> Sort: um.id DESC  (cost=6.2 rows=1000) (actual time=0.288..0.288 rows=16 loops=1)\n                -> Filter: (um.id < 652)  (cost=6.2 rows=1000) (actual time=0.0387..0.238 rows=500 loops=1)\n                    -> Index lookup on um using unique_user_movie (user_id=3)  (cost=6.2 rows=1000) (actual time=0.0379..0.18 rows=1000 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.252 rows=1) (actual time=0.00119..0.00122 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=3, movie_id=um.movie_id)  (cost=0.252 rows=1) (actual time=0.00155..0.00157 rows=0.5 loops=16)\n"
+        }
+      ]
+    },
+    {
+      "collectionSize": 10000,
+      "baseline": {
+        "firstRunMs": 37.830512,
+        "warmP50Ms": 33.623355000000174,
+        "warmP95Ms": 43.44008299999996,
+        "responseBytes": 6268895
+      },
+      "paginated": {
+        "firstRunMs": 0.996422999999595,
+        "warmP50Ms": 0.5639240000000427,
+        "warmP95Ms": 0.7110309999998208,
+        "responseBytes": 9547
+      },
+      "deepPage": {
+        "firstRunMs": 3.8832429999997657,
+        "warmP50Ms": 3.733592000000044,
+        "warmP95Ms": 3.8216120000001865,
+        "responseBytes": 9724
+      },
+      "baselinePlan": [
+        {
+          "EXPLAIN": "-> Nested loop left join  (cost=4373 rows=5463) (actual time=0.0673..29.1 rows=10000 loops=1)\n    -> Nested loop inner join  (cost=2461 rows=5463) (actual time=0.0615..12.8 rows=10000 loops=1)\n        -> Covering index lookup on um using unique_user_movie (user_id=4)  (cost=549 rows=5463) (actual time=0.0553..2.01 rows=10000 loops=1)\n        -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=889e-6..919e-6 rows=1 loops=10000)\n    -> Single-row index lookup on mr using unique_user_movie_rating (user_id=4, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00146..0.00147 rows=0.5 loops=10000)\n"
+        }
+      ],
+      "pagePlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=2738 rows=16) (actual time=0.0561..0.106 rows=16 loops=1)\n    -> Nested loop left join  (cost=2738 rows=32) (actual time=0.0558..0.105 rows=16 loops=1)\n        -> Nested loop inner join  (cost=1369 rows=32) (actual time=0.0521..0.0715 rows=16 loops=1)\n            -> Filter: (um.user_id = 4)  (cost=0.0319 rows=32) (actual time=0.0469..0.0504 rows=16 loops=1)\n                -> Index scan on um using idx_user_movies_user_id (reverse)  (cost=0.0319 rows=64) (actual time=0.046..0.0482 rows=16 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.0011..0.00113 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=4, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.0019..0.00192 rows=0.5 loops=16)\n"
+        }
+      ],
+      "deepPlan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=1369 rows=16) (actual time=4.05..4.14 rows=16 loops=1)\n    -> Nested loop left join  (cost=1369 rows=16) (actual time=4.05..4.14 rows=16 loops=1)\n        -> Nested loop inner join  (cost=684 rows=16) (actual time=4.05..4.1 rows=16 loops=1)\n            -> Filter: ((um.user_id = 4) and (um.id < 6152))  (cost=0.0225 rows=16) (actual time=4.04..4.08 rows=16 loops=1)\n                -> Index scan on um using idx_user_movies_user_id (reverse)  (cost=0.0225 rows=64) (actual time=0.0423..3.76 rows=5016 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00131..0.00134 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=4, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00183..0.00184 rows=0.5 loops=16)\n"
+        }
+      ]
+    }
+  ],
+  "probes": [
+    {
+      "name": "explicitUserOrder",
+      "plan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=1369 rows=16) (actual time=3.52..3.6 rows=16 loops=1)\n    -> Nested loop left join  (cost=1369 rows=16) (actual time=3.52..3.6 rows=16 loops=1)\n        -> Nested loop inner join  (cost=684 rows=16) (actual time=3.51..3.57 rows=16 loops=1)\n            -> Filter: ((um.user_id = 4) and (um.id < 6152))  (cost=0.0225 rows=16) (actual time=3.51..3.55 rows=16 loops=1)\n                -> Index scan on um using idx_user_movies_user_id (reverse)  (cost=0.0225 rows=64) (actual time=0.0386..3.24 rows=5016 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00118..0.00121 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=4, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00165..0.00166 rows=0.5 loops=16)\n"
+        }
+      ]
+    },
+    {
+      "name": "singleOrder",
+      "plan": [
+        {
+          "EXPLAIN": "-> Limit: 16 row(s)  (cost=1369 rows=16) (actual time=3.4..3.48 rows=16 loops=1)\n    -> Nested loop left join  (cost=1369 rows=16) (actual time=3.4..3.48 rows=16 loops=1)\n        -> Nested loop inner join  (cost=684 rows=16) (actual time=3.4..3.45 rows=16 loops=1)\n            -> Filter: ((um.user_id = 4) and (um.id < 6152))  (cost=0.0225 rows=16) (actual time=3.39..3.43 rows=16 loops=1)\n                -> Index scan on um using idx_user_movies_user_id (reverse)  (cost=0.0225 rows=64) (actual time=0.0383..3.13 rows=5016 loops=1)\n            -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.0011..0.00113 rows=1 loops=16)\n        -> Single-row index lookup on mr using unique_user_movie_rating (user_id=4, movie_id=um.movie_id)  (cost=0.25 rows=1) (actual time=0.00167..0.00168 rows=0.5 loops=16)\n"
+        }
+      ]
+    },
+    {
+      "name": "membershipFirst",
+      "plan": [
+        {
+          "EXPLAIN": "-> Nested loop left join  (cost=23.5 rows=16) (actual time=3.49..3.53 rows=16 loops=1)\n    -> Nested loop inner join  (cost=17.9 rows=16) (actual time=3.49..3.5 rows=16 loops=1)\n        -> Sort: um.id DESC  (cost=12.3..12.3 rows=16) (actual time=3.48..3.48 rows=16 loops=1)\n            -> Table scan on um  (cost=1.79..4.32 rows=16) (actual time=3.47..3.47 rows=16 loops=1)\n                -> Materialize  (cost=1.62..1.62 rows=16) (actual time=3.47..3.47 rows=16 loops=1)\n                    -> Limit: 16 row(s)  (cost=0.0225 rows=16) (actual time=3.42..3.46 rows=16 loops=1)\n                        -> Filter: ((user_movies.user_id = 4) and (user_movies.id < 6152))  (cost=0.0225 rows=16) (actual time=3.42..3.45 rows=16 loops=1)\n                            -> Index scan on user_movies using idx_user_movies_user_id (reverse)  (cost=0.0225 rows=64) (actual time=0.0404..3.13 rows=5016 loops=1)\n        -> Single-row index lookup on m using PRIMARY (id=um.movie_id)  (cost=0.256 rows=1) (actual time=0.00113..0.00117 rows=1 loops=16)\n    -> Single-row index lookup on mr using unique_user_movie_rating (user_id=um.user_id, movie_id=um.movie_id)  (cost=0.256 rows=1) (actual time=0.00162..0.00164 rows=0.5 loops=16)\n"
+        }
+      ]
+    }
+  ]
+}

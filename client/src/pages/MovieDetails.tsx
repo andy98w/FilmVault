@@ -54,10 +54,10 @@ const MovieDetails = () => {
         // If user is authenticated, check if movie is in their list
         if (isAuthenticated) {
           try {
-            const userMoviesResponse = await getUserMovies();
+            const userMoviesResponse = await getUserMovies({ tmdbId: id! });
             
             // Check if this movie is in user's list
-            const inList = userMoviesResponse.data.some(
+            const inList = userMoviesResponse.data.movies.some(
               (userMovie: any) => userMovie.MovieID === Number(id)
             );
             setIsInList(inList);

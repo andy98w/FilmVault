@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserProfile } from '../api/users';
+import { useCollection } from '../hooks/useCollection';
+import CollectionNavigation from '../components/CollectionNavigation';
 
 interface User {
   id: number;
@@ -27,11 +28,6 @@ const UserProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [userMovies, setUserMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
   // Reset scroll position when the component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -49,31 +45,6 @@ const UserProfile = () => {
     }
   }, [id, currentUser, navigate]);
   
-  // Sort function for movies
-  const sortMovies = (movies: Movie[]) => {
-    const sortedMovies = [...movies];
-    const isAscending = sortDirection === 'asc';
-    const directionMultiplier = isAscending ? 1 : -1;
-    
-    switch (sortField) {
-      case 'rating':
-        return sortedMovies.sort((a, b) => {
-          const ratingA = a.Rating || 0;
-          const ratingB = b.Rating || 0;
-          return (ratingA - ratingB) * directionMultiplier;
-        });
-        
-      case 'title':
-        return sortedMovies.sort((a, b) => {
-          const result = a.Title.localeCompare(b.Title);
-          return result * directionMultiplier;
-        });
-        
-      default:
-        return sortedMovies;
-    }
-  };
-  
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
   };
@@ -82,69 +53,16 @@ const UserProfile = () => {
     setSortField(e.target.value as 'rating' | 'title');
   };
   
-  const filteredMovies = useMemo(() => {
-    const filtered = searchQuery 
-      ? userMovies.filter(movie => movie.Title.toLowerCase().includes(searchQuery.toLowerCase()))
-      : userMovies;
-    
-    return sortMovies(filtered);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userMovies, searchQuery, sortField, sortDirection]);
+  const collection = useCollection(`/api/users/profile/${id}`, sortField, sortDirection, searchQuery);
+  const user: User | undefined = collection.user;
+  const { loading, error } = collection;
+  const userMovies: Movie[] = collection.movies.map(movie => ({
+    MovieID: movie.tmdb_id, Title: movie.title, PosterPath: movie.poster_path,
+    Overview: movie.overview, Rating: movie.rating, ReleaseDate: movie.release_date
+  }));
+  const filteredMovies = userMovies;
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      setError('');
-      
-      try {
-        if (currentUser && parseInt(id) === currentUser.id) {
-          return;
-        }
-        
-        const response = await getUserProfile(id);
-        
-        if (!response.data.user) {
-          throw new Error('User data not found in response');
-        }
-        
-        setUser(response.data.user);
-        
-        if (response.data.movies && Array.isArray(response.data.movies)) {
-          // Transform movies from snake_case to PascalCase to match the interface
-          const transformedMovies = response.data.movies.map((movie: any) => ({
-            MovieID: movie.tmdb_id, // Use TMDB ID for navigation instead of database ID
-            Title: movie.title,
-            PosterPath: movie.poster_path,
-            Overview: movie.overview,
-            Rating: movie.rating !== null ? parseInt(movie.rating) : null, // Ratings are already on 0-100 scale
-            ReleaseDate: movie.release_date
-          }));
-          setUserMovies(transformedMovies);
-        } else {
-          setUserMovies([]);
-        }
-      } catch (err: any) {
-        if (err.response) {
-          setError(`Server error: ${err.response.status} - ${err.response.data?.message || 'Failed to load user profile'}`);
-        } else if (err.request) {
-          setError('No response received from server. Please check your connection.');
-        } else {
-          setError(`Failed to load user profile: ${err.message}`);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchUserProfile();
-      window.scrollTo(0, 0);
-    }
-  }, [id, currentUser]);
-
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="container">
         <div style={{ marginTop: '150px', textAlign: 'center' }}>
@@ -154,7 +72,7 @@ const UserProfile = () => {
     );
   }
   
-  if (error || !user) {
+  if (!user) {
     return (
       <div className="container">
         <div style={{ 
@@ -450,12 +368,7 @@ const UserProfile = () => {
         {userMovies.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <p style={{ fontSize: '16px', color: 'var(--text-color)', opacity: '0.8' }}>
-              {filteredMovies.length > 0 
-                ? searchQuery 
-                  ? `Found ${filteredMovies.length} movies matching "${searchQuery}"`
-                  : `Showing ${filteredMovies.length} of ${userMovies.length} movies`
-                : `No movies found matching "${searchQuery}"`
-              }
+              {`${userMovies.length} movies on this page${searchQuery ? ` matching “${searchQuery}”` : ''}`}
             </p>
           </div>
         )}
@@ -592,9 +505,10 @@ const UserProfile = () => {
           opacity: 0.8
         }}>
           <span style={{ fontSize: '32px', display: 'block', marginBottom: '15px' }}>🎬</span>
-          <p>{user.Usernames} hasn't added any movies to their collection yet.</p>
+          <p>{searchQuery ? 'No movies match your search.' : 'No movies on this page.'}</p>
         </div>
         )}
+        <CollectionNavigation {...collection} />
       </div>
     </div>
   );

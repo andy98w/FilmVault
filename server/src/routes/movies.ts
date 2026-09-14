@@ -1,3 +1,4 @@
+import { readCollection, parseCollectionQuery, CollectionInputError } from '../services/collection';
 import express from 'express';
 import { AxiosRequestConfig } from 'axios';
 import { catalogClient } from '../services/catalog-client';
@@ -720,28 +721,13 @@ router.get('/user/list', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'User ID not found in authentication token' });
     }
     
-    const [rows] = await pool.query(
-      'SELECT m.*, mr.rating ' +
-      'FROM user_movies um ' +
-      'JOIN movies m ON um.movie_id = m.id ' +
-      'LEFT JOIN movie_ratings mr ON um.movie_id = mr.movie_id AND mr.user_id = ? ' +
-      'WHERE um.user_id = ?',
-      [userId, userId]
-    );
-    
-    const transformedMovies = (rows as any[]).map(movie => ({
-      MovieID: movie.tmdb_id,
-      Title: movie.title,
-      PosterPath: movie.poster_path,
-      Overview: movie.overview,
-      ReleaseDate: movie.release_date,
-      // Rating is already in 0-100 scale, use it directly
-      Rating: movie.rating
-    }));
-    
-    res.json(transformedMovies);
+    const page = await readCollection(pool, userId, parseCollectionQuery(userId, req.query));
+    res.json({ ...page, movies: page.movies.map((movie: any) => ({
+      MovieID: movie.tmdb_id, Title: movie.title, PosterPath: movie.poster_path,
+      Overview: movie.overview, ReleaseDate: movie.release_date, Rating: movie.rating
+    })) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(error instanceof CollectionInputError ? 400 : 500).json({ message: error instanceof CollectionInputError ? error.message : 'Server error' });
   }
 });
 

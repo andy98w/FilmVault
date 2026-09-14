@@ -13,8 +13,8 @@ export const getPersonDetails = (id: string | number) => {
   return axiosInstance.get(`/api/movies/person/${id}`);
 };
 
-export const getUserMovies = () => {
-  return axiosInstance.get(`/api/movies/user/list`);
+export const getUserMovies = (params: { tmdbId: string | number }) => {
+  return axiosInstance.get(`/api/movies/user/list`, { params });
 };
 
 export const getMovieSearch = (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {

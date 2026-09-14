@@ -1,3 +1,4 @@
+import { readCollection, parseCollectionQuery, CollectionInputError } from '../services/collection';
 import express from 'express';
 import pool from '../config/db';
 import { authenticateToken } from '../middleware/auth';
@@ -100,51 +101,10 @@ router.get('/profile/:id', async (req, res) => {
     
     const user = (users as any[])[0];
     
-    // Log database schema first
-    console.log('Checking movie tables structure for user profile...');
-    const [movieColumns] = await pool.query('SHOW COLUMNS FROM movies');
-    console.log('Movies table columns:', movieColumns);
-    
-    // Get user's movies with ratings using the correct column names
-    console.log(`Fetching movies for user ID ${id}...`);
-    let movies;
-    try {
-      // Query for user's movies
-      [movies] = await pool.query(
-        'SELECT DISTINCT m.id, m.tmdb_id, m.title, m.poster_path, m.overview, m.release_date, mr.rating ' +
-        'FROM user_movies um ' +
-        'JOIN movies m ON um.movie_id = m.id ' +
-        'LEFT JOIN movie_ratings mr ON m.id = mr.movie_id AND mr.user_id = ? ' +
-        'WHERE um.user_id = ?',
-        [id, id]
-      );
-      console.log(`Found ${(movies as any[]).length} movies for user ${id}`);
-      
-      // Keep consistent lowercase naming but still transform for client
-      const transformedMovies = (movies as any[]).map(movie => ({
-        id: movie.id,
-        tmdb_id: movie.tmdb_id,
-        title: movie.title,
-        poster_path: movie.poster_path,
-        overview: movie.overview,
-        release_date: movie.release_date,
-        rating: movie.rating
-      }));
-      
-      console.log(`Transformed ${transformedMovies.length} movies to client format`);
-      movies = transformedMovies;
-    } catch (movieQueryError) {
-      console.error('Error fetching user movies:', movieQueryError);
-      throw movieQueryError;
-    }
-    
-    res.json({
-      user,
-      movies
-    });
+    const page = await readCollection(pool, Number(id), parseCollectionQuery(Number(id), req.query));
+    res.json({ user, ...page });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error instanceof CollectionInputError ? 400 : 500).json({ message: error instanceof CollectionInputError ? error.message : 'Server error' });
   }
 });
 

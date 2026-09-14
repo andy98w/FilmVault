@@ -24,6 +24,7 @@ async function main() {
     };
     const dto=(m:any)=>({MovieID:m.tmdb_id,Title:m.title,PosterPath:m.poster_path,Overview:m.overview,ReleaseDate:m.release_date,Rating:m.rating});
     const results=[];
+    const probes:any[]=[];
     for(let user=1;user<=4;user++) {
       const sql='SELECT m.*,mr.rating FROM user_movies um JOIN movies m ON um.movie_id=m.id LEFT JOIN movie_ratings mr ON um.movie_id=mr.movie_id AND mr.user_id=? WHERE um.user_id=?';
       const options=parseCollectionQuery(user,{limit:'15'}), query=collectionQuery(user,options);
@@ -36,11 +37,19 @@ async function main() {
       const deepOptions={...options,after:{id:anchor,key:anchor}},deep=collectionQuery(user,deepOptions);
       const [deepPlan]=await db.query('EXPLAIN ANALYZE '+deep.sql,deep.params);
       const deepPage=await measure(()=>readCollection(db,user,deepOptions));
+      if(user===4) {
+        const variants = [
+          ['explicitUserOrder', deep.sql.replace('ORDER BY um.id desc, um.id desc', 'ORDER BY um.user_id desc, um.id desc')],
+          ['singleOrder', deep.sql.replace('ORDER BY um.id desc, um.id desc', 'ORDER BY um.id desc')],
+          ['membershipFirst', 'SELECT m.id,m.tmdb_id,m.title,m.poster_path,m.overview,m.release_date,mr.rating,um.id AS collection_id,um.id AS sort_key FROM (SELECT id,user_id,movie_id FROM user_movies WHERE user_id=? AND id<? ORDER BY id DESC LIMIT ?) um JOIN movies m ON m.id=um.movie_id LEFT JOIN movie_ratings mr ON mr.user_id=um.user_id AND mr.movie_id=um.movie_id ORDER BY um.id DESC'],
+        ];
+        for(const [name,probeSql] of variants) {const [plan]=await db.query('EXPLAIN ANALYZE '+probeSql,deep.params);probes.push({name,plan});}
+      }
       results.push({collectionSize:sizes[user-1],baseline,paginated,deepPage,baselinePlan,pagePlan,deepPlan});
     }
     const [engine]=await db.query('SELECT VERSION() AS version'),[schema]=await db.query('SHOW CREATE TABLE user_movies'),[indexes]=await db.query('SHOW INDEX FROM user_movies');
     fs.mkdirSync('benchmark-results',{recursive:true});
-    fs.writeFileSync('benchmark-results/collections.json',JSON.stringify({measuredAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||'local',engine,host:{cpus:os.cpus().length,model:os.cpus()[0].model,memoryBytes:os.totalmem(),node:process.version},fixture:{movies:10000,memberships:11110,users:4,ratings:'50%',synthetic:true},notes:'Sequential local database calls including decoding and DTO construction, excluding HTTP/browser/TLS. First run is not cold-cache (seed and ANALYZE ran first). 30 warm iterations per variant. No production data.',schema,indexes,results},null,2));
+    fs.writeFileSync('benchmark-results/collections.json',JSON.stringify({measuredAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||'local',engine,host:{cpus:os.cpus().length,model:os.cpus()[0].model,memoryBytes:os.totalmem(),node:process.version},fixture:{movies:10000,memberships:11110,users:4,ratings:'50%',synthetic:true},notes:'Sequential local database calls including decoding and DTO construction, excluding HTTP/browser/TLS. First run is not cold-cache (seed and ANALYZE ran first). 30 warm iterations per variant. No production data.',schema,indexes,results,probes},null,2));
   } finally {await db.end();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

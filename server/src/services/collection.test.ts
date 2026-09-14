@@ -12,6 +12,9 @@ test('real-engine collection contract', async t => {
   } else {
     const sqlite = new (require('node:sqlite').DatabaseSync)(':memory:');
     sqlite.exec(fs.readFileSync('src/config/db.ts','utf8').split('database.exec(`')[1].split('`);')[0]);
+    const plan = sqlite.prepare('EXPLAIN QUERY PLAN SELECT id FROM user_movies WHERE user_id = 1 ORDER BY id DESC LIMIT 16').all();
+    assert.ok(plan.some((row:any) => row.detail.includes('idx_user_movies_user_id')));
+    assert.ok(!plan.some((row:any) => row.detail.includes('TEMP B-TREE')));
     db={query:async(sql,params=[])=>[/^SELECT/.test(sql)?sqlite.prepare(sql).all(...params):sqlite.prepare(sql).run(...params),[]]};
     close=async()=>sqlite.close();
   }

@@ -70,6 +70,7 @@ const createSqlitePool = () => {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
     );
+    CREATE INDEX IF NOT EXISTS idx_user_movies_user_id ON user_movies(user_id);
     CREATE TABLE IF NOT EXISTS movie_ratings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

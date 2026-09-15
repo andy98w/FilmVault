@@ -1,0 +1,21 @@
+name: Catalog reliability
+on:
+  push:
+    branches: [main, codex/catalog-resilience]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: npm ci
+      - run: npm run build
+      - run: node -r ts-node/register --test src/services/catalog-client.test.ts

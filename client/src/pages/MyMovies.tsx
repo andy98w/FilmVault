@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
+import { useCollection } from '../hooks/useCollection';
+import CollectionNavigation from '../components/CollectionNavigation';
 import MovieListItem from '../components/MovieListItem';
-import Pagination from '../components/Pagination';
 import { ToastContainer, useToast } from '../components/Toast';
-import { getUserMovies, removeFromUserList, rateMovie } from '../api/movies';
+import { removeFromUserList, rateMovie } from '../api/movies';
 
 interface Movie {
   MovieID: number;
@@ -17,56 +18,21 @@ interface Movie {
 }
 
 const MyMovies = () => {
-  const [userMovies, setUserMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [moviesPerPage] = useState(15); // Increased for list view
   const [sortField, setSortField] = useState<'dateAdded' | 'rating' | 'title' | 'releaseDate'>('dateAdded');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Toast notification system
   const { toasts, addToast, removeToast } = useToast();
 
-  useEffect(() => {
-    fetchUserMovies();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Reset to first page when search query changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  const fetchUserMovies = async () => {
-    setLoading(true);
-    try {
-      const response = await getUserMovies();
-      
-      // Create a Map to filter out duplicates by MovieID
-      const moviesMap = new Map();
-      response.data.forEach((movie: Movie) => {
-        // If this MovieID is not in the map yet, or if this instance has a rating and the existing one doesn't
-        if (!moviesMap.has(movie.MovieID) || 
-            (movie.Rating && !moviesMap.get(movie.MovieID).Rating)) {
-          moviesMap.set(movie.MovieID, movie);
-        }
-      });
-      
-      // Convert map back to array
-      const uniqueMovies = Array.from(moviesMap.values());
-      setUserMovies(uniqueMovies);
-    } catch (err) {
-      addToast('Failed to load your collection. Please try again later.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const collection = useCollection('/api/movies/user/list', sortField, sortDirection, searchQuery);
+  const userMovies: Movie[] = collection.movies;
+  const filteredMovies = userMovies;
+  const paginatedMovies = userMovies;
   const handleRemoveMovie = async (movieId: number) => {
     try {
       await removeFromUserList(movieId);
-      setUserMovies(prevMovies => prevMovies.filter(movie => movie.MovieID !== movieId));
+      collection.reload();
       
       // Show toast notification
       addToast('Item removed from your collection', 'success');
@@ -78,18 +44,9 @@ const MyMovies = () => {
   const handleRateMovie = async (movieId: number, rating: number) => {
     try {
       // Call the API with the exact rating value passed by the component
-      const response = await rateMovie(movieId, rating);
+      await rateMovie(movieId, rating);
       
-      // Get the actual rating value returned by the server, if available
-      const serverRating = response?.data?.rating || rating;
-      
-      // Update the local state with the server's returned rating (or our original if not available)
-      setUserMovies(prevMovies => 
-        prevMovies.map(movie => 
-          movie.MovieID === movieId ? { ...movie, Rating: serverRating } : movie
-        )
-      );
-      
+      collection.reload();
       // Show toast notification
       addToast('Rating updated successfully', 'success');
     } catch (err) {
@@ -97,103 +54,19 @@ const MyMovies = () => {
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of the movie list container instead of the window
-    const container = document.querySelector('.movie-list-container');
-    if (container) {
-      container.scrollTop = 0;
-    }
-  };
-
   // Handle sort field change
   const handleSortFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortField(e.target.value as 'dateAdded' | 'rating' | 'title' | 'releaseDate');
     // Reset to first page when sort changes
-    setCurrentPage(1);
+
   };
 
   // Toggle sort direction
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     // Reset to first page when sort changes
-    setCurrentPage(1);
+
   };
-
-  // Sort function
-  const sortMovies = (movies: Movie[]) => {
-    const sortedMovies = [...movies];
-    const isAscending = sortDirection === 'asc';
-    
-    // Helper function to flip sort direction if descending
-    const directionMultiplier = isAscending ? 1 : -1;
-    
-    switch (sortField) {
-      case 'rating':
-        return sortedMovies.sort((a, b) => {
-          const ratingA = a.Rating || 0;
-          const ratingB = b.Rating || 0;
-          return (ratingA - ratingB) * directionMultiplier;
-        });
-        
-      case 'title':
-        return sortedMovies.sort((a, b) => {
-          const result = a.Title.localeCompare(b.Title);
-          return result * directionMultiplier;
-        });
-        
-      case 'releaseDate':
-        return sortedMovies.sort((a, b) => {
-          // Handle missing release dates - items without dates go to the end
-          if (!a.ReleaseDate && !b.ReleaseDate) return 0;
-          if (!a.ReleaseDate) return directionMultiplier;  // Push items without dates to end
-          if (!b.ReleaseDate) return -directionMultiplier; // Push items without dates to end
-          
-          // Compare dates - we know both exist at this point
-          const dateA = new Date(a.ReleaseDate).getTime();
-          const dateB = new Date(b.ReleaseDate).getTime();
-          return (dateA - dateB) * directionMultiplier;
-        });
-        
-      case 'dateAdded':
-      default:
-        // Sort by most recently added (using MovieID as a proxy if DateAdded is not available)
-        return sortedMovies.sort((a, b) => {
-          // The ID is often a good proxy for when items were added
-          // Higher IDs usually mean more recently added items
-          return ((b.MovieID || 0) - (a.MovieID || 0)) * directionMultiplier;
-        });
-    }
-  };
-
-  // Filtered and paginated movies
-  const filteredMovies = useMemo(() => {
-    // First filter
-    const filtered = searchQuery 
-      ? userMovies.filter(movie => movie.Title.toLowerCase().includes(searchQuery.toLowerCase()))
-      : userMovies;
-    
-    // Then sort
-    return sortMovies(filtered);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userMovies, searchQuery, sortField, sortDirection]);
-
-  const paginatedMovies = useMemo(() => {
-    const startIndex = (currentPage - 1) * moviesPerPage;
-    return filteredMovies.slice(startIndex, startIndex + moviesPerPage);
-  }, [filteredMovies, currentPage, moviesPerPage]);
-
-  const totalPages = Math.ceil(filteredMovies.length / moviesPerPage);
-
-  if (loading) {
-    return (
-      <div className="container">
-        <div style={{ marginTop: '150px', textAlign: 'center' }}>
-          <h2>Loading...</h2>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container">
@@ -331,12 +204,7 @@ const MyMovies = () => {
         {userMovies.length > 0 && (
           <div style={{ marginBottom: '10px' }}>
             <p style={{ fontSize: '16px', color: 'var(--text-color)', opacity: '0.8' }}>
-              {filteredMovies.length > 0 
-                ? searchQuery 
-                  ? `Found ${filteredMovies.length} movies matching "${searchQuery}"`
-                  : `Showing ${paginatedMovies.length} of ${userMovies.length} movies`
-                : `No movies found matching "${searchQuery}"`
-              }
+              {`${userMovies.length} movies on this page${searchQuery ? ` matching “${searchQuery}”` : ''}`}
             </p>
           </div>
         )}
@@ -356,16 +224,7 @@ const MyMovies = () => {
                   ))}
                 </div>
                 
-                {/* Pagination controls */}
-                {totalPages > 1 && (
-                  <div style={{ marginTop: '30px' }}>
-                    <Pagination 
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
-                    />
-                  </div>
-                )}
+
               </>
             ) : (
               <div style={{ textAlign: 'center', marginTop: '50px' }}>
@@ -375,9 +234,10 @@ const MyMovies = () => {
           </>
         ) : (
           <div style={{ textAlign: 'center', marginTop: '50px' }}>
-            <p>You haven't added any movies yet. Explore and add some to your list!</p>
+            <p>{searchQuery ? 'No movies match your search.' : 'No movies on this page.'}</p>
           </div>
         )}
+        <CollectionNavigation {...collection} />
       </div>
     </div>
   );

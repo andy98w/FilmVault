@@ -1,0 +1,57 @@
+name: Collection performance
+on:
+  push:
+    branches: [main, codex/collection-pagination]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: disposable-test-only
+          MYSQL_DATABASE: filmvault_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pdisposable-test-only"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    env:
+      DB_NAME: filmvault_test
+      DB_PASSWORD: disposable-test-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+        working-directory: server
+      - name: SQLite and catalog contracts
+        run: node -r ts-node/register --test src/services/collection.test.ts src/services/collection-http.test.ts src/services/catalog-client.test.ts
+        working-directory: server
+      - name: Bootstrap disposable MySQL with repository schema
+        run: sed 's/filmvault/filmvault_test/g' server/terraform/scripts/init_database.sql | mysql -h 127.0.0.1 -u root -pdisposable-test-only
+      - name: MySQL collection contract
+        run: node -r ts-node/register --test src/services/collection.test.ts
+        working-directory: server
+        env: {COLLECTION_TEST_MYSQL: '1'}
+      - name: Reproducible collection benchmark
+        run: npx ts-node scripts/benchmark-collections.ts
+        working-directory: server
+        env: {COLLECTION_TEST_MYSQL: '1'}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: collection-query-plans
+          path: server/benchmark-results/collections.json
+      - run: npm ci --legacy-peer-deps
+        working-directory: client
+      - run: npm test -- --watchAll=false --runInBand
+        working-directory: client
+        env: {CI: 'true'}
+      - run: npx tsc --noEmit
+        working-directory: client

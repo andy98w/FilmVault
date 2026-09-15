@@ -14,7 +14,7 @@ export const getPersonDetails = (id: string | number) => {
 };
 
 export const getUserMovies = (params: { tmdbId: string | number }) => {
-  return axiosInstance.get(`/api/movies/user/list`, { params });
+  return axiosInstance.get(`/api/movies/user/list`, { params: { ...params, pagination: 'cursor' } });
 };
 
 export const getMovieSearch = (query: string, page: number = 1, type: 'person' | 'multi' = 'multi') => {

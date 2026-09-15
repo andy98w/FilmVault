@@ -25,20 +25,25 @@ test('real collection routes enforce auth and preserve public profiles', async (
   const get=(url:string,user?:number)=>fetch(`http://127.0.0.1:${port}${url}`,{headers:user?{Authorization:`Bearer ${jwt.sign({id:user},process.env.JWT_SECRET!)}`}:{}});
   try {
     assert.equal((await get('/api/movies/user/list')).status,401);
-    const first=await (await get('/api/movies/user/list',1)).json() as any;
+    const first=await (await get('/api/movies/user/list?pagination=cursor',1)).json() as any;
     assert.equal(first.movies.length,15);assert.ok(first.nextCursor);
-    const next=await (await get('/api/movies/user/list?cursor='+first.nextCursor,1)).json() as any;
+    const next=await (await get('/api/movies/user/list?pagination=cursor&cursor='+first.nextCursor,1)).json() as any;
     assert.equal(next.movies.length,3);assert.equal(next.nextCursor,null);
-    assert.equal((await get('/api/movies/user/list?cursor='+first.nextCursor,2)).status,400);
-    const own=await (await get('/api/movies/user/list?userId=1',2)).json() as any;
+    assert.equal((await get('/api/movies/user/list?pagination=cursor&cursor='+first.nextCursor,2)).status,400);
+    const own=await (await get('/api/movies/user/list?pagination=cursor&userId=1',2)).json() as any;
     assert.equal(own.movies.length,1);assert.equal(own.movies[0].MovieID,1001);
-    const publicProfile=await (await get('/api/users/profile/1?limit=5')).json() as any;
+    const publicProfile=await (await get('/api/users/profile/1?pagination=cursor&limit=5')).json() as any;
     assert.equal(publicProfile.user.Usernames,'One');assert.equal(publicProfile.movies.length,5);
     assert.ok(publicProfile.nextCursor);assert.equal(publicProfile.user.Passwords,undefined);
     assert.equal((await get('/api/users/profile/999')).status,404);
-    assert.equal((await get('/api/movies/user/list?limit=1000',1)).status,400);
-    const member=await (await get('/api/movies/user/list?tmdbId=1001',1)).json() as any;
+    assert.equal((await get('/api/movies/user/list?pagination=cursor&limit=1000',1)).status,400);
+    const member=await (await get('/api/movies/user/list?pagination=cursor&tmdbId=1001',1)).json() as any;
     assert.equal(member.movies.length,1);assert.equal(member.movies[0].MovieID,1001);
+    const legacy = await (await get('/api/movies/user/list',1)).json() as any;
+    assert.ok(Array.isArray(legacy)); assert.equal(legacy.length,18);
+    const oldProfile = await (await get('/api/users/profile/1')).json() as any;
+    assert.equal(oldProfile.movies.length,18); assert.equal(oldProfile.nextCursor,undefined);
+    assert.equal((await get('/api/movies/user/list?pagination=unknown',1)).status,400);
   } finally {
     await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
     fs.rmSync(dir,{recursive:true,force:true});

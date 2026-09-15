@@ -1,4 +1,4 @@
-import { readCollection, parseCollectionQuery, CollectionInputError } from '../services/collection';
+import { readCollectionResponse, CollectionInputError } from '../services/collection';
 import express from 'express';
 import { AxiosRequestConfig } from 'axios';
 import { catalogClient } from '../services/catalog-client';
@@ -721,11 +721,12 @@ router.get('/user/list', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'User ID not found in authentication token' });
     }
     
-    const page = await readCollection(pool, userId, parseCollectionQuery(userId, req.query));
-    res.json({ ...page, movies: page.movies.map((movie: any) => ({
+    const page = await readCollectionResponse(pool, userId, req.query);
+    const movies = page.movies.map((movie: any) => ({
       MovieID: movie.tmdb_id, Title: movie.title, PosterPath: movie.poster_path,
       Overview: movie.overview, ReleaseDate: movie.release_date, Rating: movie.rating
-    })) });
+    }));
+    res.json(req.query.pagination === 'cursor' ? { ...page, movies } : movies);
   } catch (error) {
     res.status(error instanceof CollectionInputError ? 400 : 500).json({ message: error instanceof CollectionInputError ? error.message : 'Server error' });
   }

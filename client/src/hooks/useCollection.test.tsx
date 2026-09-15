@@ -10,7 +10,7 @@ it('loads bounded pages, follows cursors, and resets whole-collection search', a
     .mockResolvedValueOnce({data:{movies:[{id:99}],nextCursor:null}});
   const {result,rerender}=renderHook(({q})=>useCollection('/collection','dateAdded','desc',q),{initialProps:{q:''}});
   await waitFor(()=>expect(result.current.loading).toBe(false));
-  expect(get.mock.calls[0][1].params).toMatchObject({limit:15,cursor:''});
+  expect(get.mock.calls[0][1].params).toMatchObject({pagination:'cursor',limit:15,cursor:''});
   act(()=>result.current.next());
   await waitFor(()=>expect(result.current.movies).toEqual([{id:2}]));
   expect(get.mock.calls[1][1].params.cursor).toBe('next');

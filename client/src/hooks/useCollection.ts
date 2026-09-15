@@ -19,7 +19,7 @@ export function useCollection(path: string, sort: string, direction: string, q: 
     setError('');
     // Debounce typing, and abort obsolete requests when criteria or page changes.
     const timer = window.setTimeout(() => {
-      axiosInstance.get(path, { params: { sort, direction, q: q.trim(), cursor, limit: 15 }, signal: controller.signal })
+      axiosInstance.get(path, { params: { pagination: 'cursor', sort, direction, q: q.trim(), cursor, limit: 15 }, signal: controller.signal })
         .then(response => { if (!controller.signal.aborted) setResult({ ...response.data, requestKey, path }); })
         .catch(() => { if (!controller.signal.aborted) { setError('Could not load this collection. Please try again.'); setResult(previous => ({ movies: [], nextCursor: null, user: previous.path === path ? previous.user : undefined, requestKey, path })); } })
         .finally(() => { if (!controller.signal.aborted) setLoading(false); });

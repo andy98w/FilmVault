@@ -2,7 +2,7 @@
 
 The old collection endpoints returned every saved movie. My Collection then searched, sorted, and paginated that array in the browser. Movie and TV detail pages also downloaded the entire array just to check membership.
 
-Both collection endpoints now return at most 100 movies (default 15). My Collection and public profiles request 15 at a time with Previous/Next navigation. Search and sorting run against the whole collection on the server. Detail pages query one TMDB ID. Aborted or late browser responses cannot replace a newer search or another user's profile. Rating/removal refreshes from page one to avoid retaining obsolete sort positions.
+Both collection endpoints return at most 100 movies (default 15) when requested with `pagination=cursor`. Unmarked requests temporarily preserve the legacy full-collection response for cached clients. My Collection and public profiles request 15 at a time with Previous/Next navigation. Search and sorting run against the whole collection on the server. Detail pages query one TMDB ID. Aborted or late browser responses cannot replace a newer search or another user's profile. Rating/removal refreshes from page one to avoid retaining obsolete sort positions.
 
 ## API contract
 
@@ -45,7 +45,14 @@ Fixture: 10,000 synthetic movies, four users with 10 / 100 / 1,000 / 10,000 memb
 
 ## Rollout
 
-The response envelope changes: ship the server and client together. Existing cached JavaScript expects an array at the private endpoint, so an independent API-only deployment would break old clients. A versioned endpoint or compatibility window is required if deployments cannot be coordinated. No live production deployment is implied by the benchmark or feature branch.
+New clients send `pagination=cursor`; unmarked requests keep the old response shape
+(private array, public `{user,movies}`) and full collection. This compatibility path
+is intentionally unbounded until old clients have migrated. Deploy and verify the
+API first, then publish the new client. Keep the compatible API during a client
+rollback. Do not roll the API back to a pre-pagination build while new clients are
+cached. HTTP contract tests exercise old and new responses against the same data.
+Remove legacy support only after verifying client adoption; this branch does not
+establish a rollout date or production migration status.
 
 ## Recorded result — September 14, 2026
 

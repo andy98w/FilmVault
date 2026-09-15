@@ -76,3 +76,12 @@ export async function readCollection(db: Queryable, userId: number, options: Col
   const nextCursor = hasMore ? Buffer.from(JSON.stringify({ v: 1, tmdbId: options.tmdbId, user: userId, sort: options.sort, direction: options.direction, q: options.q, id: last.collection_id, key: last.sort_key })).toString('base64url') : null;
   return { movies: selected.map(({ sort_key, collection_id, ...movie }: any) => movie), nextCursor };
 }
+
+/** Temporary compatibility for cached clients. Remove only after client migration. */
+export async function readCollectionResponse(db: Queryable, userId: number, query: Record<string, unknown>) {
+  if (query.pagination === 'cursor') return readCollection(db, userId, parseCollectionQuery(userId, query));
+  if (query.pagination !== undefined) throw new CollectionInputError('Unknown pagination format');
+  const { sql, params } = collectionQuery(userId, parseCollectionQuery(userId, {}));
+  const [rows] = await db.query(sql.replace(/ LIMIT \?$/, ''), params.slice(0, -1));
+  return { movies: rows.map(({ sort_key, collection_id, ...movie }: any) => movie) };
+}

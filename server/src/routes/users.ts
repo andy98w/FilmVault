@@ -1,4 +1,4 @@
-import { readCollection, parseCollectionQuery, CollectionInputError } from '../services/collection';
+import { readCollectionResponse, CollectionInputError } from '../services/collection';
 import express from 'express';
 import pool from '../config/db';
 import { authenticateToken } from '../middleware/auth';
@@ -101,7 +101,7 @@ router.get('/profile/:id', async (req, res) => {
     
     const user = (users as any[])[0];
     
-    const page = await readCollection(pool, Number(id), parseCollectionQuery(Number(id), req.query));
+    const page = await readCollectionResponse(pool, Number(id), req.query);
     res.json({ user, ...page });
   } catch (error) {
     res.status(error instanceof CollectionInputError ? 400 : 500).json({ message: error instanceof CollectionInputError ? error.message : 'Server error' });
